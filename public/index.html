@@ -1,14 +1,17 @@
 <!DOCTYPE html>
+
 <html lang="tr">
 
 <head>
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
-      content="width=device-width,initial-scale=1">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-<title>Mini HaxBall Online</title>
+<title>Mini HaxBall 6v6</title>
 
 <style>
 
@@ -17,99 +20,177 @@
     user-select: none;
 }
 
+html,
 body {
+    width: 100%;
+    height: 100%;
     margin: 0;
-    background: #080d18;
+}
+
+body {
+
+    background:
+        #07101b;
+
     color: white;
-    font-family: Arial, sans-serif;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
     overflow: hidden;
 }
 
+/* =========================
+   MENÜ
+========================= */
+
 #menu {
+
     position: fixed;
+
     inset: 0;
 
     display: flex;
+
     justify-content: center;
+
     align-items: center;
 
     background:
         radial-gradient(
             circle at center,
-            #173861,
-            #060a12 70%
+            #214d7d 0%,
+            #101c2e 38%,
+            #050911 80%
         );
 
-    z-index: 10;
+    z-index: 100;
 }
 
-.panel {
-    width: 420px;
-    max-width: 92%;
+.menu-box {
+
+    width: 440px;
+
+    max-width: 92vw;
 
     padding: 35px;
 
-    background: #101a2b;
+    background:
+        rgba(10, 20, 35, .96);
 
     border:
-        1px solid #29466b;
+        1px solid #315579;
 
     border-radius: 22px;
 
-    text-align: center;
-
     box-shadow:
-        0 20px 80px #000;
+        0 25px 80px #000b;
+
+    text-align: center;
 }
 
 .logo {
+
     font-size: 42px;
+
     font-weight: 900;
 
-    margin-bottom: 8px;
+    margin-bottom: 5px;
 }
 
 .subtitle {
-    color: #8fa5c2;
+
+    color: #9db2cc;
 
     margin-bottom: 30px;
 }
 
-.server {
-    padding: 20px;
+.input-label {
 
-    background: #17263c;
-
-    border-radius: 14px;
+    display: block;
 
     text-align: left;
+
+    color: #b7c7db;
+
+    font-size: 14px;
+
+    margin-bottom: 8px;
+}
+
+#nameInput {
+
+    width: 100%;
+
+    padding: 14px;
+
+    border: 1px solid #345477;
+
+    border-radius: 11px;
+
+    outline: none;
+
+    background: #111e31;
+
+    color: white;
+
+    font-size: 16px;
 
     margin-bottom: 18px;
 }
 
+#nameInput:focus {
+
+    border-color:
+        #3596ff;
+}
+
+.server-box {
+
+    text-align: left;
+
+    padding: 18px;
+
+    margin-bottom: 18px;
+
+    background:
+        #14253b;
+
+    border-radius: 14px;
+
+    border:
+        1px solid #294765;
+}
+
 .server-title {
-    font-size: 19px;
+
+    font-size: 18px;
+
     font-weight: bold;
 }
 
-.status {
+.server-status {
+
     float: right;
-    color: #55e58a;
+
+    color:
+        #52e58a;
 }
 
-.server-info {
+#playerCount {
+
     display: block;
 
     margin-top: 8px;
 
-    color: #8fa5c2;
+    color:
+        #8fa6c0;
 }
 
-button {
-    cursor: pointer;
-}
+#joinButton {
 
-#join {
     width: 100%;
 
     padding: 15px;
@@ -118,88 +199,219 @@ button {
 
     border-radius: 12px;
 
-    background: #2689ff;
+    background:
+        #258cff;
 
     color: white;
 
     font-size: 18px;
 
-    font-weight: bold;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+        .15s;
 }
 
-#join:hover {
-    background: #49a0ff;
+#joinButton:hover {
+
+    background:
+        #46a0ff;
+
+    transform:
+        translateY(-1px);
 }
+
+#joinButton:disabled {
+
+    background:
+        #44566d;
+
+    cursor:
+        not-allowed;
+
+    transform:
+        none;
+}
+
+.menu-help {
+
+    margin-top: 18px;
+
+    color:
+        #71869f;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+/* =========================
+   OYUN
+========================= */
 
 #game {
+
+    position: fixed;
+
+    inset: 0;
+
     display: none;
 
-    width: 100vw;
-    height: 100vh;
+    background:
+        #07101b;
 }
 
 #canvas {
-    display: block;
 
-    width: min(1100px, 100vw);
-    height: auto;
+    position: absolute;
 
-    margin: auto;
-}
-
-#hud {
-    position: fixed;
-
-    top: 10px;
     left: 50%;
 
-    transform: translateX(-50%);
+    top: 50%;
 
-    z-index: 5;
+    transform:
+        translate(-50%, -50%);
 
-    padding: 9px 15px;
+    width: 100vw;
 
-    background: #0009;
+    height: 100vh;
 
-    border-radius: 10px;
-
-    font-size: 13px;
+    object-fit: contain;
 }
 
-#back {
+#topHud {
+
     position: fixed;
 
-    right: 15px;
     top: 12px;
 
-    z-index: 6;
+    left: 50%;
 
-    padding: 9px 14px;
+    transform:
+        translateX(-50%);
 
-    background: #0009;
+    z-index: 10;
 
-    color: white;
+    display: flex;
+
+    align-items: center;
+
+    gap: 18px;
+
+    padding: 9px 18px;
+
+    background:
+        rgba(0,0,0,.65);
+
+    border-radius: 12px;
+
+    font-weight: bold;
+}
+
+.blueText {
+
+    color:
+        #2998ff;
+}
+
+.redText {
+
+    color:
+        #ff4050;
+}
+
+#connection {
+
+    position: fixed;
+
+    left: 12px;
+
+    top: 12px;
+
+    z-index: 10;
+
+    padding: 7px 11px;
+
+    background:
+        rgba(0,0,0,.65);
+
+    border-radius: 8px;
+
+    font-size: 12px;
+}
+
+#leave {
+
+    position: fixed;
+
+    right: 12px;
+
+    top: 12px;
+
+    z-index: 10;
+
+    padding: 8px 13px;
 
     border: none;
 
     border-radius: 9px;
+
+    background:
+        rgba(0,0,0,.65);
+
+    color: white;
+
+    cursor: pointer;
 }
 
-#connection {
+#controls {
+
     position: fixed;
 
-    left: 15px;
-    top: 15px;
+    bottom: 12px;
 
-    z-index: 6;
+    left: 50%;
 
-    padding: 8px 12px;
+    transform:
+        translateX(-50%);
+
+    z-index: 10;
+
+    padding: 7px 12px;
+
+    background:
+        rgba(0,0,0,.55);
 
     border-radius: 8px;
 
-    background: #0009;
+    color:
+        #d3deea;
 
     font-size: 12px;
+}
+
+/* Mobil cihaz */
+
+@media (max-width: 700px) {
+
+    .logo {
+        font-size: 32px;
+    }
+
+    .menu-box {
+        padding: 25px;
+    }
+
+    #topHud {
+        font-size: 12px;
+        gap: 10px;
+    }
+
+    #controls {
+        font-size: 10px;
+    }
 }
 
 </style>
@@ -208,24 +420,43 @@ button {
 
 <body>
 
+<!-- =========================
+     MENÜ
+========================= -->
+
 <div id="menu">
 
-    <div class="panel">
+    <div class="menu-box">
 
         <div class="logo">
             ⚽ Mini HaxBall
         </div>
 
         <div class="subtitle">
-            Online 5v5 • 10 Oyuncu
+            Online 6v6 • 12 Oyuncu
         </div>
 
-        <div class="server">
+        <label
+            class="input-label"
+            for="nameInput"
+        >
+            Oyuncu adın
+        </label>
+
+        <input
+            id="nameInput"
+            type="text"
+            maxlength="16"
+            placeholder="Örn: Messi"
+            autocomplete="off"
+        >
+
+        <div class="server-box">
 
             <span
-                class="status"
-                id="status">
-                ● Sunucu açık
+                class="server-status"
+            >
+                ● ONLINE
             </span>
 
             <div class="server-title">
@@ -233,85 +464,138 @@ button {
             </div>
 
             <span
-                class="server-info"
-                id="serverInfo">
-                0 / 10 oyuncu
+                id="playerCount"
+            >
+                0 / 12 oyuncu
             </span>
 
         </div>
 
-        <button id="join">
+        <button
+            id="joinButton"
+        >
             SUNUCUYA GİR
         </button>
+
+        <div class="menu-help">
+            Mavi takım: WASD<br>
+            Kırmızı takım: Ok tuşları<br>
+            Maksimum 12 oyuncu • 6v6
+        </div>
 
     </div>
 
 </div>
 
+<!-- =========================
+     OYUN
+========================= -->
+
 <div id="game">
 
     <canvas
         id="canvas"
-        width="1100"
-        height="650">
-    </canvas>
+        width="1200"
+        height="700"
+    ></canvas>
 
 </div>
 
-<div id="hud">
-    WASD / Ok Tuşları • R = Reset
+<div id="topHud">
+
+    <span class="blueText">
+        MAVİ
+    </span>
+
+    <span id="blueScore">
+        0
+    </span>
+
+    <span>
+        -
+    </span>
+
+    <span id="redScore">
+        0
+    </span>
+
+    <span class="redText">
+        KIRMIZI
+    </span>
+
 </div>
 
 <div id="connection">
     Bağlanıyor...
 </div>
 
-<button id="back">
+<button id="leave">
     ← Menü
 </button>
+
+<div id="controls">
+    Hareket: WASD / Ok Tuşları
+</div>
 
 <script>
 
 const canvas =
-    document.getElementById("canvas");
+    document.getElementById(
+        "canvas"
+    );
 
 const ctx =
     canvas.getContext("2d");
 
 const menu =
-    document.getElementById("menu");
+    document.getElementById(
+        "menu"
+    );
 
 const game =
-    document.getElementById("game");
+    document.getElementById(
+        "game"
+    );
 
-const join =
-    document.getElementById("join");
+const nameInput =
+    document.getElementById(
+        "nameInput"
+    );
 
-const back =
-    document.getElementById("back");
+const joinButton =
+    document.getElementById(
+        "joinButton"
+    );
+
+const playerCount =
+    document.getElementById(
+        "playerCount"
+    );
+
+const blueScore =
+    document.getElementById(
+        "blueScore"
+    );
+
+const redScore =
+    document.getElementById(
+        "redScore"
+    );
 
 const connection =
-    document.getElementById("connection");
+    document.getElementById(
+        "connection"
+    );
 
-const serverInfo =
-    document.getElementById("serverInfo");
+const leave =
+    document.getElementById(
+        "leave"
+    );
 
-const W = 1100;
-const H = 650;
+const W = 1200;
+const H = 700;
 
-const field = {
-    x: 50,
-    y: 50,
-    width: 1000,
-    height: 550
-};
-
-const goal = {
-    width: 30,
-    height: 180
-};
-
-let socket;
+let socket = null;
 
 let myId = null;
 
@@ -320,8 +604,8 @@ let myTeam = null;
 let players = [];
 
 let ball = {
-    x: 550,
-    y: 325
+    x: W / 2,
+    y: H / 2
 };
 
 let score = {
@@ -329,12 +613,32 @@ let score = {
     red: 0
 };
 
+let field = {
+    x: 40,
+    y: 40,
+    width: 1120,
+    height: 620
+};
+
+let goal = {
+    width: 35,
+    height: 210
+};
+
 const keys = {
+
     up: false,
     down: false,
     left: false,
     right: false
+
 };
+
+let gameRunning = false;
+
+/* =========================
+   KLAVYE
+========================= */
 
 document.addEventListener(
     "keydown",
@@ -346,41 +650,31 @@ document.addEventListener(
         if (
             key === "w" ||
             key === "arrowup"
-        )
+        ) {
             keys.up = true;
+        }
 
         if (
             key === "s" ||
             key === "arrowdown"
-        )
+        ) {
             keys.down = true;
+        }
 
         if (
             key === "a" ||
             key === "arrowleft"
-        )
+        ) {
             keys.left = true;
+        }
 
         if (
             key === "d" ||
             key === "arrowright"
-        )
+        ) {
             keys.right = true;
-
-        if (key === "r") {
-
-            if (
-                socket &&
-                socket.readyState === WebSocket.OPEN
-            ) {
-
-                socket.send(
-                    JSON.stringify({
-                        type: "reset"
-                    })
-                );
-            }
         }
+
     }
 );
 
@@ -394,35 +688,39 @@ document.addEventListener(
         if (
             key === "w" ||
             key === "arrowup"
-        )
+        ) {
             keys.up = false;
+        }
 
         if (
             key === "s" ||
             key === "arrowdown"
-        )
+        ) {
             keys.down = false;
+        }
 
         if (
             key === "a" ||
             key === "arrowleft"
-        )
+        ) {
             keys.left = false;
+        }
 
         if (
             key === "d" ||
             key === "arrowright"
-        )
+        ) {
             keys.right = false;
+        }
+
     }
 );
 
-function connect() {
+/* =========================
+   SUNUCU
+========================= */
 
-    /*
-      Sayfa HTTP üzerinden açılıyorsa ws,
-      HTTPS üzerinden açılıyorsa wss kullanılır.
-    */
+function connect() {
 
     const protocol =
         location.protocol === "https:"
@@ -439,45 +737,103 @@ function connect() {
     socket.onopen = () => {
 
         connection.textContent =
-            "🟢 Sunucuya bağlı";
+            "🟢 Bağlandı";
 
         connection.style.color =
-            "#55e58a";
+            "#52e58a";
+
+        const name =
+            nameInput.value.trim() ||
+            "Oyuncu";
+
+        socket.send(
+            JSON.stringify({
+                type: "join",
+                name: name
+            })
+        );
     };
 
-    socket.onmessage = event => {
+    socket.onmessage =
+        event => {
 
-        const data =
-            JSON.parse(event.data);
+            let data;
 
-        if (data.type === "welcome") {
+            try {
+                data =
+                    JSON.parse(
+                        event.data
+                    );
+            } catch {
+                return;
+            }
 
-            myId = data.id;
-            myTeam = data.team;
-        }
+            if (
+                data.type ===
+                "welcome"
+            ) {
 
-        if (data.type === "state") {
+                myId =
+                    data.id;
 
-            players = data.players;
+                myTeam =
+                    data.team;
 
-            ball = data.ball;
+                connection.textContent =
+                    "🟢 " +
+                    (
+                        myTeam === "blue"
+                            ? "Mavi takım"
+                            : "Kırmızı takım"
+                    );
+            }
 
-            score = data.score;
+            if (
+                data.type ===
+                "state"
+            ) {
 
-            serverInfo.textContent =
-                players.length +
-                " / " +
-                data.maxPlayers +
-                " oyuncu";
-        }
+                players =
+                    data.players;
 
-        if (data.type === "full") {
+                ball =
+                    data.ball;
 
-            alert(
-                "Sunucu dolu! Maksimum 10 oyuncu."
-            );
-        }
-    };
+                score =
+                    data.score;
+
+                field =
+                    data.field;
+
+                goal =
+                    data.goal;
+
+                playerCount.textContent =
+                    players.length +
+                    " / " +
+                    data.maxPlayers +
+                    " oyuncu";
+
+                blueScore.textContent =
+                    score.blue;
+
+                redScore.textContent =
+                    score.red;
+            }
+
+            if (
+                data.type ===
+                "full"
+            ) {
+
+                alert(
+                    "Sunucu dolu! Maksimum 12 oyuncu."
+                );
+
+                leaveGame();
+            }
+
+        };
 
     socket.onclose = () => {
 
@@ -485,56 +841,140 @@ function connect() {
             "🔴 Bağlantı kesildi";
 
         connection.style.color =
-            "#ff5964";
+            "#ff5362";
     };
 }
 
-setInterval(() => {
+/* =========================
+   INPUT GÖNDER
+========================= */
+
+setInterval(
+    () => {
+
+        if (
+            socket &&
+            socket.readyState ===
+                WebSocket.OPEN
+        ) {
+
+            socket.send(
+                JSON.stringify({
+
+                    type: "input",
+
+                    up: keys.up,
+
+                    down: keys.down,
+
+                    left: keys.left,
+
+                    right: keys.right
+                })
+            );
+        }
+
+    },
+    1000 / 30
+);
+
+/* =========================
+   OYUNA GİR
+========================= */
+
+joinButton.onclick = () => {
 
     if (
-        socket &&
-        socket.readyState === WebSocket.OPEN
+        nameInput.value
+            .trim()
+            .length === 0
     ) {
 
-        socket.send(
-            JSON.stringify({
-                type: "input",
+        nameInput.focus();
 
-                up: keys.up,
-                down: keys.down,
-                left: keys.left,
-                right: keys.right
-            })
-        );
+        return;
     }
 
-}, 1000 / 30);
+    joinButton.disabled = true;
 
-join.onclick = () => {
+    menu.style.display =
+        "none";
 
-    menu.style.display = "none";
-
-    game.style.display = "block";
+    game.style.display =
+        "block";
 
     connect();
 
-    draw();
+    gameRunning = true;
 };
 
-back.onclick = () => {
+/* Enter ile gir */
+
+nameInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "Enter"
+        ) {
+
+            joinButton.click();
+        }
+    }
+);
+
+/* =========================
+   ÇIKIŞ
+========================= */
+
+function leaveGame() {
+
+    gameRunning = false;
 
     if (socket) {
+
         socket.close();
+
+        socket = null;
     }
 
-    game.style.display = "none";
+    players = [];
 
-    menu.style.display = "flex";
-};
+    myId = null;
+
+    myTeam = null;
+
+    menu.style.display =
+        "flex";
+
+    game.style.display =
+        "none";
+
+    joinButton.disabled =
+        false;
+
+    keys.up = false;
+    keys.down = false;
+    keys.left = false;
+    keys.right = false;
+}
+
+leave.onclick =
+    leaveGame;
+
+/* =========================
+   SAHA
+========================= */
 
 function drawField() {
 
-    ctx.fillStyle = "#16834a";
+    /*
+     * Çim
+     */
+
+    ctx.fillStyle =
+        "#15834b";
 
     ctx.fillRect(
         0,
@@ -543,7 +983,12 @@ function drawField() {
         H
     );
 
-    ctx.fillStyle = "#219653";
+    /*
+     * Saha
+     */
+
+    ctx.fillStyle =
+        "#209653";
 
     ctx.fillRect(
         field.x,
@@ -552,10 +997,18 @@ function drawField() {
         field.height
     );
 
+    /*
+     * Çim çizgileri
+     */
+
     ctx.strokeStyle =
         "rgba(255,255,255,.9)";
 
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
+
+    /*
+     * Dış çizgi
+     */
 
     ctx.strokeRect(
         field.x,
@@ -563,6 +1016,10 @@ function drawField() {
         field.width,
         field.height
     );
+
+    /*
+     * Orta çizgi
+     */
 
     ctx.beginPath();
 
@@ -573,10 +1030,15 @@ function drawField() {
 
     ctx.lineTo(
         W / 2,
-        field.y + field.height
+        field.y +
+        field.height
     );
 
     ctx.stroke();
+
+    /*
+     * Orta daire
+     */
 
     ctx.beginPath();
 
@@ -590,7 +1052,12 @@ function drawField() {
 
     ctx.stroke();
 
-    ctx.fillStyle = "white";
+    /*
+     * Orta nokta
+     */
+
+    ctx.fillStyle =
+        "white";
 
     ctx.beginPath();
 
@@ -604,65 +1071,70 @@ function drawField() {
 
     ctx.fill();
 
-    const top =
+    /*
+     * Kaleler
+     */
+
+    const goalTop =
         H / 2 -
         goal.height / 2;
 
     ctx.fillStyle =
-        "#101722";
+        "#101820";
 
     ctx.fillRect(
-        field.x - goal.width,
-        top,
+        field.x -
+            goal.width,
+        goalTop,
         goal.width,
         goal.height
     );
 
     ctx.fillRect(
-        field.x + field.width,
-        top,
+        field.x +
+            field.width,
+        goalTop,
         goal.width,
         goal.height
     );
 
-    ctx.strokeStyle = "white";
+    ctx.strokeStyle =
+        "white";
 
     ctx.lineWidth = 3;
 
     ctx.strokeRect(
-        field.x - goal.width,
-        top,
+        field.x -
+            goal.width,
+        goalTop,
         goal.width,
         goal.height
     );
 
     ctx.strokeRect(
-        field.x + field.width,
-        top,
+        field.x +
+            field.width,
+        goalTop,
         goal.width,
         goal.height
     );
 }
 
+/* =========================
+   OYUNCU
+========================= */
+
 function drawPlayer(player) {
 
-    const radius = 20;
+    const radius = 17;
 
-    ctx.fillStyle = "#0005";
+    /*
+     * GÖLGE YOK
+     */
 
-    ctx.beginPath();
-
-    ctx.ellipse(
-        player.x,
-        player.y + radius + 4,
-        radius,
-        6,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
+    /*
+     * Oyuncu
+     */
 
     ctx.fillStyle =
         player.team === "blue"
@@ -681,117 +1153,144 @@ function drawPlayer(player) {
 
     ctx.fill();
 
+    /*
+     * Kenarlık
+     */
+
     ctx.strokeStyle =
         player.id === myId
-            ? "#ffe66d"
-            : "white";
+            ? "#ffe45c"
+            : "#ffffff";
 
     ctx.lineWidth =
         player.id === myId
-            ? 4
+            ? 3
             : 2;
 
     ctx.stroke();
 
+    /*
+     * Parlama
+     */
+
     ctx.fillStyle =
-        "rgba(255,255,255,.4)";
+        "rgba(255,255,255,.45)";
 
     ctx.beginPath();
 
     ctx.arc(
-        player.x - 6,
-        player.y - 6,
-        5,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-}
-
-function drawBall() {
-
-    ctx.fillStyle = "#0005";
-
-    ctx.beginPath();
-
-    ctx.ellipse(
-        ball.x,
-        ball.y + 19,
-        15,
-        5,
-        0,
+        player.x - 5,
+        player.y - 5,
+        4,
         0,
         Math.PI * 2
     );
 
     ctx.fill();
 
-    ctx.fillStyle = "white";
-
-    ctx.beginPath();
-
-    ctx.arc(
-        ball.x,
-        ball.y,
-        15,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-
-    ctx.strokeStyle = "#222";
-
-    ctx.lineWidth = 2;
-
-    ctx.stroke();
-}
-
-function drawScore() {
-
-    ctx.fillStyle = "#0009";
-
-    ctx.fillRect(
-        440,
-        8,
-        220,
-        50
-    );
+    /*
+     * İsim
+     */
 
     ctx.font =
-        "bold 30px Arial";
+        "bold 13px Arial";
 
     ctx.textAlign =
         "center";
 
-    ctx.fillStyle =
-        "#2998ff";
+    ctx.textBaseline =
+        "bottom";
 
-    ctx.fillText(
-        score.blue,
-        490,
-        43
+    /*
+     * İsmin arkasına küçük
+     * şeffaf zemin
+     */
+
+    const text =
+        player.name;
+
+    const width =
+        ctx.measureText(
+            text
+        ).width;
+
+    ctx.fillStyle =
+        "rgba(0,0,0,.55)";
+
+    ctx.fillRect(
+        player.x -
+            width / 2 -
+            4,
+        player.y -
+            radius -
+            19,
+        width + 8,
+        17
     );
 
     ctx.fillStyle =
         "white";
 
     ctx.fillText(
-        "-",
-        550,
-        43
-    );
-
-    ctx.fillStyle =
-        "#ff3d4f";
-
-    ctx.fillText(
-        score.red,
-        610,
-        43
+        text,
+        player.x,
+        player.y -
+            radius -
+            5
     );
 }
+
+/* =========================
+   TOP
+========================= */
+
+function drawBall() {
+
+    ctx.fillStyle =
+        "white";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ball.x,
+        ball.y,
+        14,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.strokeStyle =
+        "#202020";
+
+    ctx.lineWidth = 2;
+
+    ctx.stroke();
+
+    /*
+     * Basit top deseni
+     */
+
+    ctx.fillStyle =
+        "#222";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ball.x,
+        ball.y,
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+/* =========================
+   ÇİZ
+========================= */
 
 function draw() {
 
@@ -804,15 +1303,21 @@ function draw() {
 
     drawField();
 
-    players.forEach(
-        drawPlayer
-    );
+    for (
+        const player
+        of players
+    ) {
+
+        drawPlayer(
+            player
+        );
+    }
 
     drawBall();
 
-    drawScore();
-
-    requestAnimationFrame(draw);
+    requestAnimationFrame(
+        draw
+    );
 }
 
 draw();
@@ -820,5 +1325,5 @@ draw();
 </script>
 
 </body>
-</html>
 
+</html>
