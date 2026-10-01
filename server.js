@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 12;
 const MAX_TEAM_PLAYERS = 6;
 
-app.use(express.static("public"));
+const MATCH_TIME = 5 * 60;
 
 const FIELD = {
     x: 40,
@@ -31,17 +31,22 @@ const PLAYER_SPEED = 4.7;
 const BALL_RADIUS = 14;
 const BALL_MAX_SPEED = 15;
 
+app.use(express.static("public"));
+
 const players = new Map();
 
 const ball = {
-    x: FIELD.x + FIELD.width / 2,
-    y: FIELD.y + FIELD.height / 2,
+    x: 600,
+    y: 350,
     vx: 3,
     vy: 0
 };
 
 let blueScore = 0;
 let redScore = 0;
+
+let matchTime = MATCH_TIME;
+let lastSecond = Date.now();
 
 function createId() {
     return Math.random()
@@ -50,6 +55,7 @@ function createId() {
 }
 
 function cleanName(name) {
+
     if (typeof name !== "string") {
         return "Oyuncu";
     }
@@ -65,17 +71,34 @@ function cleanName(name) {
     return name.substring(0, 16);
 }
 
+/*
+ * TAKIM DAĞITIMI
+ *
+ * Oyuncular mümkün olduğunca dengeli
+ * şekilde dağıtılır.
+ */
+
 function getTeam() {
 
     let blue = 0;
     let red = 0;
 
     for (const player of players.values()) {
-        if (player.team === "blue") blue++;
-        if (player.team === "red") red++;
+
+        if (player.team === "blue") {
+            blue++;
+        }
+
+        if (player.team === "red") {
+            red++;
+        }
     }
 
-    if (blue < MAX_TEAM_PLAYERS) {
+    /*
+     * Önce küçük olan takıma oyuncu ver.
+     */
+
+    if (blue <= red && blue < MAX_TEAM_PLAYERS) {
         return "blue";
     }
 
@@ -83,7 +106,17 @@ function getTeam() {
         return "red";
     }
 
+    if (blue < MAX_TEAM_PLAYERS) {
+        return "blue";
+    }
+
     return null;
+}
+
+function getTeamPlayers(team) {
+
+    return [...players.values()]
+        .filter(player => player.team === team);
 }
 
 function spawnPosition(team, index) {
@@ -98,17 +131,12 @@ function spawnPosition(team, index) {
             ? 1
             : -1;
 
-    const columns = 2;
-
-    const column = index % columns;
-    const row = Math.floor(index / columns);
+    const column = index % 2;
+    const row = Math.floor(index / 2);
 
     return {
-        x: startX + direction * column * 50,
-        y:
-            FIELD.y +
-            170 +
-            row * 85
+        x: startX + direction * column * 55,
+        y: FIELD.y + 125 + row * 105
     };
 }
 
@@ -134,12 +162,10 @@ function resetBall() {
 function resetPlayers() {
 
     const bluePlayers =
-        [...players.values()]
-            .filter(p => p.team === "blue");
+        getTeamPlayers("blue");
 
     const redPlayers =
-        [...players.values()]
-            .filter(p => p.team === "red");
+        getTeamPlayers("red");
 
     bluePlayers.forEach((player, index) => {
 
@@ -172,6 +198,20 @@ function resetPlayers() {
     });
 
     resetBall();
+}
+
+function resetMatch() {
+
+    blueScore = 0;
+    redScore = 0;
+
+    matchTime = MATCH_TIME;
+
+    lastSecond = Date.now();
+
+    resetPlayers();
+
+    console.log("Yeni maç başladı.");
 }
 
 function addPlayer(ws, name) {
@@ -236,15 +276,15 @@ function addPlayer(ws, name) {
 
     ws.send(JSON.stringify({
         type: "welcome",
-        id,
-        team,
+        id: id,
+        team: team,
         name: player.name
     }));
 
     resetPlayers();
 
     console.log(
-        `${player.name} katıldı (${team}) - ${players.size}/${MAX_PLAYERS}`
+        `${player.name} katıldı - ${team} - ${players.size}/${MAX_PLAYERS}`
     );
 }
 
@@ -255,15 +295,13 @@ wss.on("connection", ws => {
         let data;
 
         try {
-            data = JSON.parse(raw.toString());
+            data =
+                JSON.parse(
+                    raw.toString()
+                );
         } catch {
             return;
         }
-
-        /*
-         * Oyuncu henüz sisteme eklenmediyse
-         * ilk mesaj isim mesajı olmalı.
-         */
 
         if (!ws.playerId) {
 
@@ -284,7 +322,9 @@ wss.on("connection", ws => {
         const player =
             players.get(ws.playerId);
 
-        if (!player) return;
+        if (!player) {
+            return;
+        }
 
         if (data.type === "input") {
 
@@ -314,13 +354,18 @@ wss.on("connection", ws => {
         if (player) {
 
             console.log(
-                `${player.name} ayrıldı`
+                `${player.name} ayrıldı.`
             );
 
             players.delete(
                 ws.playerId
             );
         }
+
+        /*
+         * Oyuncular ayrıldığında
+         * pozisyonları tekrar düzenle.
+         */
 
         resetPlayers();
     });
@@ -370,25 +415,27 @@ function movePlayer(player) {
     player.x += player.vx;
     player.y += player.vy;
 
-    player.x = Math.max(
-        FIELD.x + player.radius,
-        Math.min(
-            FIELD.x +
-                FIELD.width -
-                player.radius,
-            player.x
-        )
-    );
+    player.x =
+        Math.max(
+            FIELD.x + player.radius,
+            Math.min(
+                FIELD.x +
+                    FIELD.width -
+                    player.radius,
+                player.x
+            )
+        );
 
-    player.y = Math.max(
-        FIELD.y + player.radius,
-        Math.min(
-            FIELD.y +
-                FIELD.height -
-                player.radius,
-            player.y
-        )
-    );
+    player.y =
+        Math.max(
+            FIELD.y + player.radius,
+            Math.min(
+                FIELD.y +
+                    FIELD.height -
+                    player.radius,
+                player.y
+            )
+        );
 }
 
 function collidePlayerBall(player) {
@@ -460,10 +507,6 @@ function updateBall() {
     ball.vx *= 0.992;
     ball.vy *= 0.992;
 
-    /*
-     * Üst duvar
-     */
-
     if (
         ball.y - BALL_RADIUS <=
         FIELD.y
@@ -475,10 +518,6 @@ function updateBall() {
 
         ball.vy *= -0.9;
     }
-
-    /*
-     * Alt duvar
-     */
 
     if (
         ball.y + BALL_RADIUS >=
@@ -504,10 +543,6 @@ function updateBall() {
         FIELD.height / 2 +
         GOAL.height / 2;
 
-    /*
-     * Sol taraf
-     */
-
     if (
         ball.x - BALL_RADIUS <=
         FIELD.x
@@ -531,10 +566,6 @@ function updateBall() {
 
         ball.vx *= -0.9;
     }
-
-    /*
-     * Sağ taraf
-     */
 
     if (
         ball.x + BALL_RADIUS >=
@@ -563,14 +594,61 @@ function updateBall() {
     }
 }
 
+function updateTimer() {
+
+    const now =
+        Date.now();
+
+    if (
+        now -
+        lastSecond >=
+        1000
+    ) {
+
+        const secondsPassed =
+            Math.floor(
+                (
+                    now -
+                    lastSecond
+                ) / 1000
+            );
+
+        matchTime -=
+            secondsPassed;
+
+        lastSecond =
+            now;
+
+        if (matchTime <= 0) {
+
+            matchTime = 0;
+
+            /*
+             * 5 dakika doldu.
+             * Skoru ve pozisyonları sıfırla.
+             */
+
+            resetMatch();
+        }
+    }
+}
+
 function updateGame() {
 
-    for (const player of players.values()) {
+    updateTimer();
+
+    for (
+        const player
+        of players.values()
+    ) {
 
         movePlayer(player);
     }
 
-    for (const player of players.values()) {
+    for (
+        const player
+        of players.values()
+    ) {
 
         collidePlayerBall(player);
     }
@@ -612,6 +690,8 @@ function broadcast() {
                 red: redScore
             },
 
+            matchTime: matchTime,
+
             maxPlayers: MAX_PLAYERS,
 
             field: FIELD,
@@ -619,7 +699,10 @@ function broadcast() {
             goal: GOAL
         });
 
-    for (const player of players.values()) {
+    for (
+        const player
+        of players.values()
+    ) {
 
         if (
             player.ws.readyState ===
@@ -632,10 +715,6 @@ function broadcast() {
         }
     }
 }
-
-/*
- * 60 FPS oyun sunucusu
- */
 
 setInterval(() => {
 
@@ -650,7 +729,7 @@ server.listen(
     () => {
 
         console.log(
-            `Mini HaxBall server: ${PORT}`
+            `Mini HaxBall server ${PORT} portunda çalışıyor.`
         );
     }
 );
