@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>Mini HaxBall Online</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    margin: 0;
+    background: #080d18;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#menu {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background:
+        radial-gradient(
+            circle at center,
+            #173861,
+            #060a12 70%
+        );
+
+    z-index: 10;
+}
+
+.panel {
+    width: 420px;
+    max-width: 92%;
+
+    padding: 35px;
+
+    background: #101a2b;
+
+    border:
+        1px solid #29466b;
+
+    border-radius: 22px;
+
+    text-align: center;
+
+    box-shadow:
+        0 20px 80px #000;
+}
+
+.logo {
+    font-size: 42px;
+    font-weight: 900;
+
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #8fa5c2;
+
+    margin-bottom: 30px;
+}
+
+.server {
+    padding: 20px;
+
+    background: #17263c;
+
+    border-radius: 14px;
+
+    text-align: left;
+
+    margin-bottom: 18px;
+}
+
+.server-title {
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.status {
+    float: right;
+    color: #55e58a;
+}
+
+.server-info {
+    display: block;
+
+    margin-top: 8px;
+
+    color: #8fa5c2;
+}
+
+button {
+    cursor: pointer;
+}
+
+#join {
+    width: 100%;
+
+    padding: 15px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: #2689ff;
+
+    color: white;
+
+    font-size: 18px;
+
+    font-weight: bold;
+}
+
+#join:hover {
+    background: #49a0ff;
+}
+
+#game {
+    display: none;
+
+    width: 100vw;
+    height: 100vh;
+}
+
+#canvas {
+    display: block;
+
+    width: min(1100px, 100vw);
+    height: auto;
+
+    margin: auto;
+}
+
+#hud {
+    position: fixed;
+
+    top: 10px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    z-index: 5;
+
+    padding: 9px 15px;
+
+    background: #0009;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+}
+
+#back {
+    position: fixed;
+
+    right: 15px;
+    top: 12px;
+
+    z-index: 6;
+
+    padding: 9px 14px;
+
+    background: #0009;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 9px;
+}
+
+#connection {
+    position: fixed;
+
+    left: 15px;
+    top: 15px;
+
+    z-index: 6;
+
+    padding: 8px 12px;
+
+    border-radius: 8px;
+
+    background: #0009;
+
+    font-size: 12px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="menu">
+
+    <div class="panel">
+
+        <div class="logo">
+            ⚽ Mini HaxBall
+        </div>
+
+        <div class="subtitle">
+            Online 5v5 • 10 Oyuncu
+        </div>
+
+        <div class="server">
+
+            <span
+                class="status"
+                id="status">
+                ● Sunucu açık
+            </span>
+
+            <div class="server-title">
+                🇹🇷 Türkiye Sunucusu #1
+            </div>
+
+            <span
+                class="server-info"
+                id="serverInfo">
+                0 / 10 oyuncu
+            </span>
+
+        </div>
+
+        <button id="join">
+            SUNUCUYA GİR
+        </button>
+
+    </div>
+
+</div>
+
+<div id="game">
+
+    <canvas
+        id="canvas"
+        width="1100"
+        height="650">
+    </canvas>
+
+</div>
+
+<div id="hud">
+    WASD / Ok Tuşları • R = Reset
+</div>
+
+<div id="connection">
+    Bağlanıyor...
+</div>
+
+<button id="back">
+    ← Menü
+</button>
+
+<script>
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+const menu =
+    document.getElementById("menu");
+
+const game =
+    document.getElementById("game");
+
+const join =
+    document.getElementById("join");
+
+const back =
+    document.getElementById("back");
+
+const connection =
+    document.getElementById("connection");
+
+const serverInfo =
+    document.getElementById("serverInfo");
+
+const W = 1100;
+const H = 650;
+
+const field = {
+    x: 50,
+    y: 50,
+    width: 1000,
+    height: 550
+};
+
+const goal = {
+    width: 30,
+    height: 180
+};
+
+let socket;
+
+let myId = null;
+
+let myTeam = null;
+
+let players = [];
+
+let ball = {
+    x: 550,
+    y: 325
+};
+
+let score = {
+    blue: 0,
+    red: 0
+};
+
+const keys = {
+    up: false,
+    down: false,
+    left: false,
+    right: false
+};
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        const key =
+            event.key.toLowerCase();
+
+        if (
+            key === "w" ||
+            key === "arrowup"
+        )
+            keys.up = true;
+
+        if (
+            key === "s" ||
+            key === "arrowdown"
+        )
+            keys.down = true;
+
+        if (
+            key === "a" ||
+            key === "arrowleft"
+        )
+            keys.left = true;
+
+        if (
+            key === "d" ||
+            key === "arrowright"
+        )
+            keys.right = true;
+
+        if (key === "r") {
+
+            if (
+                socket &&
+                socket.readyState === WebSocket.OPEN
+            ) {
+
+                socket.send(
+                    JSON.stringify({
+                        type: "reset"
+                    })
+                );
+            }
+        }
+    }
+);
+
+document.addEventListener(
+    "keyup",
+    event => {
+
+        const key =
+            event.key.toLowerCase();
+
+        if (
+            key === "w" ||
+            key === "arrowup"
+        )
+            keys.up = false;
+
+        if (
+            key === "s" ||
+            key === "arrowdown"
+        )
+            keys.down = false;
+
+        if (
+            key === "a" ||
+            key === "arrowleft"
+        )
+            keys.left = false;
+
+        if (
+            key === "d" ||
+            key === "arrowright"
+        )
+            keys.right = false;
+    }
+);
+
+function connect() {
+
+    /*
+      Sayfa HTTP üzerinden açılıyorsa ws,
+      HTTPS üzerinden açılıyorsa wss kullanılır.
+    */
+
+    const protocol =
+        location.protocol === "https:"
+            ? "wss:"
+            : "ws:";
+
+    socket =
+        new WebSocket(
+            protocol +
+            "//" +
+            location.host
+        );
+
+    socket.onopen = () => {
+
+        connection.textContent =
+            "🟢 Sunucuya bağlı";
+
+        connection.style.color =
+            "#55e58a";
+    };
+
+    socket.onmessage = event => {
+
+        const data =
+            JSON.parse(event.data);
+
+        if (data.type === "welcome") {
+
+            myId = data.id;
+            myTeam = data.team;
+        }
+
+        if (data.type === "state") {
+
+            players = data.players;
+
+            ball = data.ball;
+
+            score = data.score;
+
+            serverInfo.textContent =
+                players.length +
+                " / " +
+                data.maxPlayers +
+                " oyuncu";
+        }
+
+        if (data.type === "full") {
+
+            alert(
+                "Sunucu dolu! Maksimum 10 oyuncu."
+            );
+        }
+    };
+
+    socket.onclose = () => {
+
+        connection.textContent =
+            "🔴 Bağlantı kesildi";
+
+        connection.style.color =
+            "#ff5964";
+    };
+}
+
+setInterval(() => {
+
+    if (
+        socket &&
+        socket.readyState === WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify({
+                type: "input",
+
+                up: keys.up,
+                down: keys.down,
+                left: keys.left,
+                right: keys.right
+            })
+        );
+    }
+
+}, 1000 / 30);
+
+join.onclick = () => {
+
+    menu.style.display = "none";
+
+    game.style.display = "block";
+
+    connect();
+
+    draw();
+};
+
+back.onclick = () => {
+
+    if (socket) {
+        socket.close();
+    }
+
+    game.style.display = "none";
+
+    menu.style.display = "flex";
+};
+
+function drawField() {
+
+    ctx.fillStyle = "#16834a";
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+    ctx.fillStyle = "#219653";
+
+    ctx.fillRect(
+        field.x,
+        field.y,
+        field.width,
+        field.height
+    );
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.9)";
+
+    ctx.lineWidth = 5;
+
+    ctx.strokeRect(
+        field.x,
+        field.y,
+        field.width,
+        field.height
+    );
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        W / 2,
+        field.y
+    );
+
+    ctx.lineTo(
+        W / 2,
+        field.y + field.height
+    );
+
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.arc(
+        W / 2,
+        H / 2,
+        90,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.stroke();
+
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        W / 2,
+        H / 2,
+        5,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    const top =
+        H / 2 -
+        goal.height / 2;
+
+    ctx.fillStyle =
+        "#101722";
+
+    ctx.fillRect(
+        field.x - goal.width,
+        top,
+        goal.width,
+        goal.height
+    );
+
+    ctx.fillRect(
+        field.x + field.width,
+        top,
+        goal.width,
+        goal.height
+    );
+
+    ctx.strokeStyle = "white";
+
+    ctx.lineWidth = 3;
+
+    ctx.strokeRect(
+        field.x - goal.width,
+        top,
+        goal.width,
+        goal.height
+    );
+
+    ctx.strokeRect(
+        field.x + field.width,
+        top,
+        goal.width,
+        goal.height
+    );
+}
+
+function drawPlayer(player) {
+
+    const radius = 20;
+
+    ctx.fillStyle = "#0005";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        player.x,
+        player.y + radius + 4,
+        radius,
+        6,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.fillStyle =
+        player.team === "blue"
+            ? "#2998ff"
+            : "#ff3d4f";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x,
+        player.y,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.strokeStyle =
+        player.id === myId
+            ? "#ffe66d"
+            : "white";
+
+    ctx.lineWidth =
+        player.id === myId
+            ? 4
+            : 2;
+
+    ctx.stroke();
+
+    ctx.fillStyle =
+        "rgba(255,255,255,.4)";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x - 6,
+        player.y - 6,
+        5,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+function drawBall() {
+
+    ctx.fillStyle = "#0005";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        ball.x,
+        ball.y + 19,
+        15,
+        5,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ball.x,
+        ball.y,
+        15,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.strokeStyle = "#222";
+
+    ctx.lineWidth = 2;
+
+    ctx.stroke();
+}
+
+function drawScore() {
+
+    ctx.fillStyle = "#0009";
+
+    ctx.fillRect(
+        440,
+        8,
+        220,
+        50
+    );
+
+    ctx.font =
+        "bold 30px Arial";
+
+    ctx.textAlign =
+        "center";
+
+    ctx.fillStyle =
+        "#2998ff";
+
+    ctx.fillText(
+        score.blue,
+        490,
+        43
+    );
+
+    ctx.fillStyle =
+        "white";
+
+    ctx.fillText(
+        "-",
+        550,
+        43
+    );
+
+    ctx.fillStyle =
+        "#ff3d4f";
+
+    ctx.fillText(
+        score.red,
+        610,
+        43
+    );
+}
+
+function draw() {
+
+    ctx.clearRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+    drawField();
+
+    players.forEach(
+        drawPlayer
+    );
+
+    drawBall();
+
+    drawScore();
+
+    requestAnimationFrame(draw);
+}
+
+draw();
+
+</script>
+
+</body>
+</html>
+
