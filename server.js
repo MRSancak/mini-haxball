@@ -4,6 +4,7 @@ const WebSocket = require("ws");
 
 const app = express();
 const server = http.createServer(app);
+
 const wss = new WebSocket.Server({
     server,
     perMessageDeflate: false
@@ -13,310 +14,189 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 
-/* =========================================================
+/* =========================
    AYARLAR
-========================================================= */
+========================= */
 
 const MAX_PLAYERS = 12;
-
 const MAX_TEAM_PLAYERS = 6;
 
-const MATCH_TIME = 5 * 60;
-
-const PHYSICS_FPS = 60;
-
-const NETWORK_FPS = 30;
-
-const PHYSICS_INTERVAL =
-    1000 / PHYSICS_FPS;
-
-const NETWORK_INTERVAL =
-    1000 / NETWORK_FPS;
-
-/* =========================================================
-   SAHA
-========================================================= */
+const MATCH_TIME = 300;
 
 const FIELD = {
-
     x: 40,
-
     y: 40,
-
     width: 1120,
-
     height: 620
 };
 
 const GOAL = {
-
     width: 35,
-
     height: 210
 };
 
 const PLAYER_RADIUS = 17;
-
 const PLAYER_SPEED = 4.7;
 
 const BALL_RADIUS = 14;
-
 const BALL_MAX_SPEED = 15;
 
-/* =========================================================
+/* =========================
    OYUNCULAR
-========================================================= */
+========================= */
 
 const players = new Map();
 
-/* =========================================================
+/* =========================
    TOP
-========================================================= */
+========================= */
 
 const ball = {
-
-    x:
-        FIELD.x +
-        FIELD.width / 2,
-
-    y:
-        FIELD.y +
-        FIELD.height / 2,
-
+    x: 600,
+    y: 350,
     vx: 3,
-
     vy: 0
 };
 
-/* =========================================================
-   SKOR / SÜRE
-========================================================= */
+/* =========================
+   SKOR
+========================= */
 
 let blueScore = 0;
-
 let redScore = 0;
 
 let matchTime = MATCH_TIME;
 
-let lastSecond =
-    Date.now();
+/* =========================
+   TAKIM
+========================= */
 
-let lastPhysics =
-    Date.now();
-
-let lastNetwork =
-    Date.now();
-
-/* =========================================================
-   ID
-========================================================= */
-
-function createId() {
-
-    return Math.random()
-        .toString(36)
-        .substring(2, 10);
-}
-
-/* =========================================================
-   İSİM TEMİZLE
-========================================================= */
-
-function cleanName(name) {
-
-    if (
-        typeof name !==
-        "string"
-    ) {
-
-        return "Oyuncu";
-    }
-
-    name =
-        name
-            .replace(/[<>]/g, "")
-            .trim();
-
-    if (!name) {
-
-        return "Oyuncu";
-    }
-
-    return name.substring(
-        0,
-        16
-    );
-}
-
-/* =========================================================
-   TAKIM SAYILARI
-========================================================= */
-
-function getTeamCounts() {
+function getTeam() {
 
     let blue = 0;
-
     let red = 0;
 
-    for (
-        const player
-        of players.values()
-    ) {
+    for (const player of players.values()) {
 
-        if (
-            player.team ===
-            "blue"
-        ) {
-
+        if (player.team === "blue") {
             blue++;
-
-        } else if (
-            player.team ===
-            "red"
-        ) {
-
+        } else {
             red++;
         }
     }
 
-    return {
-        blue,
-        red
-    };
-}
-
-/* =========================================================
-   TAKIM SEÇ
-========================================================= */
-
-function getTeam() {
-
-    const {
-        blue,
-        red
-    } = getTeamCounts();
-
-    /*
-     * Önce sayısı az olan takıma koy.
-     */
-
-    if (
-        blue < red &&
-        blue < MAX_TEAM_PLAYERS
-    ) {
-
+    if (blue < red && blue < 6) {
         return "blue";
     }
 
-    if (
-        red < blue &&
-        red < MAX_TEAM_PLAYERS
-    ) {
-
+    if (red < blue && red < 6) {
         return "red";
     }
 
-    /*
-     * Eşitse dönüşümlü.
-     */
-
-    if (
-        blue <= red &&
-        blue < MAX_TEAM_PLAYERS
-    ) {
-
+    if (blue < 6) {
         return "blue";
     }
 
-    if (
-        red < MAX_TEAM_PLAYERS
-    ) {
-
+    if (red < 6) {
         return "red";
-    }
-
-    if (
-        blue < MAX_TEAM_PLAYERS
-    ) {
-
-        return "blue";
     }
 
     return null;
 }
 
-/* =========================================================
-   TAKIM OYUNCULARI
-========================================================= */
+/* =========================
+   İSİM
+========================= */
 
-function getTeamPlayers(team) {
+function cleanName(name) {
 
-    const result = [];
-
-    for (
-        const player
-        of players.values()
-    ) {
-
-        if (
-            player.team === team
-        ) {
-
-            result.push(player);
-        }
+    if (typeof name !== "string") {
+        return "Oyuncu";
     }
 
-    return result;
+    name = name
+        .replace(/[<>]/g, "")
+        .trim();
+
+    if (!name) {
+        return "Oyuncu";
+    }
+
+    return name.substring(0, 16);
 }
 
-/* =========================================================
+/* =========================
    BAŞLANGIÇ POZİSYONU
-========================================================= */
+========================= */
 
-function spawnPosition(
-    team,
-    index
-) {
+function spawnPosition(team, index) {
 
-    const startX =
+    const x =
         team === "blue"
             ? FIELD.x + 180
-            : FIELD.x +
-              FIELD.width -
-              180;
+            : FIELD.x + FIELD.width - 180;
 
     const direction =
-        team === "blue"
-            ? 1
-            : -1;
-
-    const column =
-        index % 2;
-
-    const row =
-        Math.floor(
-            index / 2
-        );
+        team === "blue" ? 1 : -1;
 
     return {
-
         x:
-            startX +
+            x +
             direction *
-                column *
-                55,
+            (index % 2) *
+            55,
 
         y:
             FIELD.y +
-            125 +
-            row *
-                105
+            120 +
+            Math.floor(index / 2) *
+            105
     };
 }
 
-/* =========================================================
-   TOPU SIFIRLA
-========================================================= */
+/* =========================
+   OYUNCULARI YERLEŞTİR
+========================= */
+
+function resetPlayers() {
+
+    let blueIndex = 0;
+    let redIndex = 0;
+
+    for (const player of players.values()) {
+
+        let pos;
+
+        if (player.team === "blue") {
+
+            pos =
+                spawnPosition(
+                    "blue",
+                    blueIndex++
+                );
+
+        } else {
+
+            pos =
+                spawnPosition(
+                    "red",
+                    redIndex++
+                );
+        }
+
+        player.x = pos.x;
+        player.y = pos.y;
+
+        player.vx = 0;
+        player.vy = 0;
+    }
+
+    resetBall();
+}
+
+/* =========================
+   TOP RESET
+========================= */
 
 function resetBall() {
 
@@ -329,136 +209,52 @@ function resetBall() {
         FIELD.height / 2;
 
     ball.vx =
-        Math.random() > 0.5
+        Math.random() < 0.5
             ? 3
             : -3;
 
     ball.vy =
-        (Math.random() - 0.5) *
-        3;
+        (Math.random() - 0.5) * 2;
 }
 
-/* =========================================================
-   OYUNCULARI SIFIRLA
-========================================================= */
-
-function resetPlayers() {
-
-    const blue =
-        getTeamPlayers("blue");
-
-    const red =
-        getTeamPlayers("red");
-
-    for (
-        let i = 0;
-        i < blue.length;
-        i++
-    ) {
-
-        const player =
-            blue[i];
-
-        const pos =
-            spawnPosition(
-                "blue",
-                i
-            );
-
-        player.x =
-            pos.x;
-
-        player.y =
-            pos.y;
-
-        player.vx = 0;
-
-        player.vy = 0;
-    }
-
-    for (
-        let i = 0;
-        i < red.length;
-        i++
-    ) {
-
-        const player =
-            red[i];
-
-        const pos =
-            spawnPosition(
-                "red",
-                i
-            );
-
-        player.x =
-            pos.x;
-
-        player.y =
-            pos.y;
-
-        player.vx = 0;
-
-        player.vy = 0;
-    }
-
-    resetBall();
-}
-
-/* =========================================================
-   YENİ MAÇ
-========================================================= */
+/* =========================
+   MAÇ RESET
+========================= */
 
 function resetMatch() {
 
     blueScore = 0;
-
     redScore = 0;
 
-    matchTime =
-        MATCH_TIME;
-
-    lastSecond =
-        Date.now();
+    matchTime = MATCH_TIME;
 
     resetPlayers();
 }
 
-/* =========================================================
+/* =========================
    OYUNCU EKLE
-========================================================= */
+========================= */
 
-function addPlayer(
-    ws,
-    name
-) {
+function addPlayer(ws, name) {
 
-    if (
-        players.size >=
-        MAX_PLAYERS
-    ) {
+    if (players.size >= MAX_PLAYERS) {
 
-        ws.send(
-            JSON.stringify({
-                type: "full"
-            })
-        );
+        ws.send(JSON.stringify({
+            type: "full"
+        }));
 
         ws.close();
 
         return;
     }
 
-    const team =
-        getTeam();
+    const team = getTeam();
 
     if (!team) {
 
-        ws.send(
-            JSON.stringify({
-                type: "full"
-            })
-        );
+        ws.send(JSON.stringify({
+            type: "full"
+        }));
 
         ws.close();
 
@@ -466,286 +262,181 @@ function addPlayer(
     }
 
     const id =
-        createId();
+        Math.random()
+            .toString(36)
+            .substring(2, 10);
 
     const player = {
 
-        id,
+        id: id,
 
-        name:
-            cleanName(name),
+        name: cleanName(name),
 
-        team,
+        team: team,
 
-        ws,
+        ws: ws,
 
         x: 0,
-
         y: 0,
 
         vx: 0,
-
         vy: 0,
 
         keys: {
-
             up: false,
-
             down: false,
-
             left: false,
-
             right: false
         }
     };
 
-    players.set(
-        id,
-        player
-    );
+    players.set(id, player);
 
-    ws.playerId =
-        id;
+    ws.playerId = id;
 
-    ws.send(
-        JSON.stringify({
-
-            type:
-                "welcome",
-
-            id,
-
-            team,
-
-            name:
-                player.name
-        })
-    );
+    ws.send(JSON.stringify({
+        type: "welcome",
+        id: id,
+        team: team,
+        name: player.name
+    }));
 
     resetPlayers();
 
     console.log(
-        `${player.name} katıldı | ${team} | ${players.size}/12`
+        player.name +
+        " katıldı - " +
+        team +
+        " - " +
+        players.size +
+        "/12"
     );
 }
 
-/* =========================================================
+/* =========================
    WEBSOCKET
-========================================================= */
+========================= */
 
-wss.on(
-    "connection",
-    ws => {
+wss.on("connection", ws => {
 
-        /*
-         * Ping/pong ile bağlantının
-         * açık kalmasını sağla.
-         */
+    ws.on("message", raw => {
 
-        ws.isAlive = true;
+        let data;
 
-        ws.on(
-            "pong",
-            () => {
+        try {
+            data =
+                JSON.parse(
+                    raw.toString()
+                );
+        } catch {
+            return;
+        }
 
-                ws.isAlive = true;
+        if (!ws.playerId) {
+
+            if (
+                data.type === "join" &&
+                typeof data.name === "string"
+            ) {
+
+                addPlayer(
+                    ws,
+                    data.name
+                );
             }
+
+            return;
+        }
+
+        const player =
+            players.get(
+                ws.playerId
+            );
+
+        if (!player) {
+            return;
+        }
+
+        if (data.type === "input") {
+
+            player.keys.up =
+                data.up === true;
+
+            player.keys.down =
+                data.down === true;
+
+            player.keys.left =
+                data.left === true;
+
+            player.keys.right =
+                data.right === true;
+        }
+    });
+
+    ws.on("close", () => {
+
+        if (!ws.playerId) {
+            return;
+        }
+
+        players.delete(
+            ws.playerId
         );
 
-        ws.on(
-            "message",
-            raw => {
+        resetPlayers();
+    });
+});
 
-                let data;
+/* =========================
+   OYUNCU HAREKET
+========================= */
 
-                try {
-
-                    data =
-                        JSON.parse(
-                            raw.toString()
-                        );
-
-                } catch {
-
-                    return;
-                }
-
-                /*
-                 * Henüz oyuncu değilse
-                 * sadece JOIN kabul et.
-                 */
-
-                if (!ws.playerId) {
-
-                    if (
-                        data.type ===
-                            "join" &&
-                        typeof data.name ===
-                            "string"
-                    ) {
-
-                        addPlayer(
-                            ws,
-                            data.name
-                        );
-                    }
-
-                    return;
-                }
-
-                const player =
-                    players.get(
-                        ws.playerId
-                    );
-
-                if (!player) {
-                    return;
-                }
-
-                /*
-                 * INPUT
-                 */
-
-                if (
-                    data.type ===
-                    "input"
-                ) {
-
-                    player.keys.up =
-                        !!data.up;
-
-                    player.keys.down =
-                        !!data.down;
-
-                    player.keys.left =
-                        !!data.left;
-
-                    player.keys.right =
-                        !!data.right;
-                }
-            }
-        );
-
-        ws.on(
-            "close",
-            () => {
-
-                if (
-                    !ws.playerId
-                ) {
-
-                    return;
-                }
-
-                const player =
-                    players.get(
-                        ws.playerId
-                    );
-
-                if (player) {
-
-                    console.log(
-                        `${player.name} ayrıldı`
-                    );
-
-                    players.delete(
-                        ws.playerId
-                    );
-                }
-
-                resetPlayers();
-            }
-        );
-    }
-);
-
-/* =========================================================
-   OYUNCU HAREKETİ
-========================================================= */
-
-function movePlayer(
-    player
-) {
+function updatePlayer(player) {
 
     let dx = 0;
-
     let dy = 0;
 
-    if (
-        player.keys.left
-    ) {
-
+    if (player.keys.left) {
         dx--;
     }
 
-    if (
-        player.keys.right
-    ) {
-
+    if (player.keys.right) {
         dx++;
     }
 
-    if (
-        player.keys.up
-    ) {
-
+    if (player.keys.up) {
         dy--;
     }
 
-    if (
-        player.keys.down
-    ) {
-
+    if (player.keys.down) {
         dy++;
     }
 
-    /*
-     * Normalizasyon
-     */
-
-    if (
-        dx !== 0 ||
-        dy !== 0
-    ) {
+    if (dx !== 0 || dy !== 0) {
 
         const length =
-            Math.hypot(
-                dx,
-                dy
+            Math.sqrt(
+                dx * dx +
+                dy * dy
             );
 
-        dx /=
-            length;
-
-        dy /=
-            length;
+        dx /= length;
+        dy /= length;
 
         player.vx =
-            dx *
-            PLAYER_SPEED;
+            dx * PLAYER_SPEED;
 
         player.vy =
-            dy *
-            PLAYER_SPEED;
+            dy * PLAYER_SPEED;
 
     } else {
 
-        player.vx *=
-            0.72;
-
-        player.vy *=
-            0.72;
+        player.vx *= 0.72;
+        player.vy *= 0.72;
     }
 
-    player.x +=
-        player.vx;
-
-    player.y +=
-        player.vy;
-
-    /*
-     * Sınırlar
-     */
+    player.x += player.vx;
+    player.y += player.vy;
 
     const minX =
         FIELD.x +
@@ -765,77 +456,52 @@ function movePlayer(
         FIELD.height -
         PLAYER_RADIUS;
 
-    if (
-        player.x < minX
-    ) {
-
-        player.x =
-            minX;
-
+    if (player.x < minX) {
+        player.x = minX;
         player.vx = 0;
     }
 
-    if (
-        player.x > maxX
-    ) {
-
-        player.x =
-            maxX;
-
+    if (player.x > maxX) {
+        player.x = maxX;
         player.vx = 0;
     }
 
-    if (
-        player.y < minY
-    ) {
-
-        player.y =
-            minY;
-
+    if (player.y < minY) {
+        player.y = minY;
         player.vy = 0;
     }
 
-    if (
-        player.y > maxY
-    ) {
-
-        player.y =
-            maxY;
-
+    if (player.y > maxY) {
+        player.y = maxY;
         player.vy = 0;
     }
 }
 
-/* =========================================================
-   OYUNCU - TOP ÇARPIŞMASI
-========================================================= */
+/* =========================
+   TOP ÇARPIŞMA
+========================= */
 
-function collidePlayerBall(
-    player
-) {
+function collideBall(player) {
 
     const dx =
-        ball.x -
-        player.x;
+        ball.x - player.x;
 
     const dy =
-        ball.y -
-        player.y;
+        ball.y - player.y;
+
+    const minDistance =
+        PLAYER_RADIUS +
+        BALL_RADIUS;
 
     const distanceSquared =
         dx * dx +
         dy * dy;
 
-    const minimumDistance =
-        PLAYER_RADIUS +
-        BALL_RADIUS;
-
     if (
         distanceSquared >=
-        minimumDistance *
-        minimumDistance
+        minDistance *
+        minDistance
     ) {
-
         return;
     }
 
@@ -850,23 +516,13 @@ function collidePlayerBall(
     const ny =
         dy / distance;
 
-    /*
-     * Topu oyuncudan çıkar
-     */
-
     ball.x =
         player.x +
-        nx *
-            minimumDistance;
+        nx * minDistance;
 
     ball.y =
         player.y +
-        ny *
-            minimumDistance;
-
-    /*
-     * Topa kuvvet
-     */
+        ny * minDistance;
 
     ball.vx +=
         nx * 2.4 +
@@ -876,20 +532,13 @@ function collidePlayerBall(
         ny * 2.4 +
         player.vy * 0.65;
 
-    /*
-     * Maksimum hız
-     */
-
     const speed =
-        Math.hypot(
-            ball.vx,
-            ball.vy
+        Math.sqrt(
+            ball.vx * ball.vx +
+            ball.vy * ball.vy
         );
 
-    if (
-        speed >
-        BALL_MAX_SPEED
-    ) {
+    if (speed > BALL_MAX_SPEED) {
 
         ball.vx =
             ball.vx /
@@ -903,35 +552,20 @@ function collidePlayerBall(
     }
 }
 
-/* =========================================================
+/* =========================
    TOP
-========================================================= */
+========================= */
 
 function updateBall() {
 
-    ball.x +=
-        ball.vx;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
 
-    ball.y +=
-        ball.vy;
-
-    /*
-     * Sürtünme
-     */
-
-    ball.vx *=
-        0.992;
-
-    ball.vy *=
-        0.992;
-
-    /*
-     * ÜST
-     */
+    ball.vx *= 0.992;
+    ball.vy *= 0.992;
 
     if (
-        ball.y -
-            BALL_RADIUS <=
+        ball.y - BALL_RADIUS <
         FIELD.y
     ) {
 
@@ -939,19 +573,13 @@ function updateBall() {
             FIELD.y +
             BALL_RADIUS;
 
-        ball.vy *=
-            -0.9;
+        ball.vy *= -0.9;
     }
 
-    /*
-     * ALT
-     */
-
     if (
-        ball.y +
-            BALL_RADIUS >=
+        ball.y + BALL_RADIUS >
         FIELD.y +
-            FIELD.height
+        FIELD.height
     ) {
 
         ball.y =
@@ -959,8 +587,7 @@ function updateBall() {
             FIELD.height -
             BALL_RADIUS;
 
-        ball.vy *=
-            -0.9;
+        ball.vy *= -0.9;
     }
 
     const goalTop =
@@ -973,21 +600,16 @@ function updateBall() {
         FIELD.height / 2 +
         GOAL.height / 2;
 
-    /*
-     * SOL KALE
-     */
+    /* SOL KALE */
 
     if (
-        ball.x -
-            BALL_RADIUS <=
+        ball.x - BALL_RADIUS <
         FIELD.x
     ) {
 
         if (
-            ball.y >
-                goalTop &&
-            ball.y <
-                goalBottom
+            ball.y > goalTop &&
+            ball.y < goalBottom
         ) {
 
             redScore++;
@@ -1001,26 +623,20 @@ function updateBall() {
             FIELD.x +
             BALL_RADIUS;
 
-        ball.vx *=
-            -0.9;
+        ball.vx *= -0.9;
     }
 
-    /*
-     * SAĞ KALE
-     */
+    /* SAĞ KALE */
 
     if (
-        ball.x +
-            BALL_RADIUS >=
+        ball.x + BALL_RADIUS >
         FIELD.x +
-            FIELD.width
+        FIELD.width
     ) {
 
         if (
-            ball.y >
-                goalTop &&
-            ball.y <
-                goalBottom
+            ball.y > goalTop &&
+            ball.y < goalBottom
         ) {
 
             blueScore++;
@@ -1035,330 +651,150 @@ function updateBall() {
             FIELD.width -
             BALL_RADIUS;
 
-        ball.vx *=
-            -0.9;
+        ball.vx *= -0.9;
     }
 }
 
-/* =========================================================
-   OYUN GÜNCELLEME
-========================================================= */
+/* =========================
+   FİZİK
+========================= */
 
-function updateGame() {
+function physics() {
 
-    /*
-     * Oyuncular
-     */
-
-    for (
-        const player
-        of players.values()
-    ) {
-
-        movePlayer(
-            player
-        );
+    for (const player of players.values()) {
+        updatePlayer(player);
     }
 
-    /*
-     * Oyuncu-top
-     */
-
-    for (
-        const player
-        of players.values()
-    ) {
-
-        collidePlayerBall(
-            player
-        );
+    for (const player of players.values()) {
+        collideBall(player);
     }
-
-    /*
-     * Top
-     */
 
     updateBall();
 }
 
-/* =========================================================
-   SÜRE
-========================================================= */
+/* =========================
+   NETWORK
+========================= */
 
-function updateTimer() {
+function sendState() {
 
-    const now =
-        Date.now();
-
-    if (
-        now -
-        lastSecond >=
-        1000
-    ) {
-
-        const secondsPassed =
-            Math.floor(
-                (
-                    now -
-                    lastSecond
-                ) / 1000
-            );
-
-        matchTime -=
-            secondsPassed;
-
-        lastSecond =
-            now;
-
-        if (
-            matchTime <= 0
-        ) {
-
-            /*
-             * 5 dakika bitti.
-             */
-
-            resetMatch();
-        }
+    if (players.size === 0) {
+        return;
     }
-}
 
-/* =========================================================
-   NETWORK STATE
-========================================================= */
+    const playerList = [];
 
-function broadcast() {
+    for (const player of players.values()) {
 
-    /*
-     * Oyuncu listesini hazırla.
-     */
-
-    const playerData =
-        [];
-
-    for (
-        const player
-        of players.values()
-    ) {
-
-        playerData.push({
-
-            id:
-                player.id,
-
-            name:
-                player.name,
-
-            team:
-                player.team,
-
-            x:
-                Math.round(
-                    player.x *
-                    10
-                ) / 10,
-
-            y:
-                Math.round(
-                    player.y *
-                    10
-                ) / 10
+        playerList.push({
+            id: player.id,
+            name: player.name,
+            team: player.team,
+            x: Math.round(player.x * 10) / 10,
+            y: Math.round(player.y * 10) / 10
         });
     }
-
-    /*
-     * Tek JSON oluştur.
-     */
 
     const message =
         JSON.stringify({
 
-            type:
-                "state",
+            type: "state",
 
-            players:
-                playerData,
+            players: playerList,
 
             ball: {
-
                 x:
                     Math.round(
-                        ball.x *
-                        10
+                        ball.x * 10
                     ) / 10,
 
                 y:
                     Math.round(
-                        ball.y *
-                        10
+                        ball.y * 10
                     ) / 10
             },
 
             score: {
-
-                blue:
-                    blueScore,
-
-                red:
-                    redScore
+                blue: blueScore,
+                red: redScore
             },
 
-            matchTime:
-                matchTime,
+            matchTime: matchTime,
 
-            maxPlayers:
-                MAX_PLAYERS,
+            maxPlayers: 12,
 
-            field:
-                FIELD,
+            field: FIELD,
 
-            goal:
-                GOAL
+            goal: GOAL
         });
 
-    /*
-     * Herkese gönder.
-     */
-
-    for (
-        const player
-        of players.values()
-    ) {
-
-        const ws =
-            player.ws;
+    for (const player of players.values()) {
 
         if (
-            ws.readyState ===
+            player.ws.readyState ===
             WebSocket.OPEN
         ) {
 
-            ws.send(
-                message
-            );
+            player.ws.send(message);
         }
     }
 }
 
-/* =========================================================
-   ANA OYUN DÖNGÜSÜ
-========================================================= */
+/* =========================
+   FİZİK 60 FPS
+========================= */
 
-function gameLoop() {
-
-    const now =
-        Date.now();
-
-    /*
-     * Fizik zamanı
-     */
-
-    if (
-        now -
-        lastPhysics >=
-        PHYSICS_INTERVAL
-    ) {
-
-        /*
-         * Biriken zaman çok büyürse
-         * server'ın geride kalmasını önle.
-         */
-
-        if (
-            now -
-            lastPhysics >
-            100
-        ) {
-
-            lastPhysics =
-                now;
-        } else {
-
-            lastPhysics +=
-                PHYSICS_INTERVAL;
-        }
-
-        updateGame();
-
-        updateTimer();
-    }
-
-    /*
-     * Network 30 FPS
-     */
-
-    if (
-        now -
-        lastNetwork >=
-        NETWORK_INTERVAL
-    ) {
-
-        lastNetwork =
-            now;
-
-        broadcast();
-    }
-
-    setImmediate(
-        gameLoop
-    );
-}
-
-gameLoop();
-
-/* =========================================================
-   PING
-========================================================= */
-
-const pingInterval =
-    setInterval(
-        () => {
-
-            for (
-                const ws
-                of wss.clients
-            ) {
-
-                if (
-                    ws.isAlive === false
-                ) {
-
-                    ws.terminate();
-
-                    continue;
-                }
-
-                ws.isAlive =
-                    false;
-
-                ws.ping();
-            }
-
-        },
-        30000
-    );
-
-wss.on(
-    "close",
-    () => {
-
-        clearInterval(
-            pingInterval
-        );
-    }
+setInterval(
+    physics,
+    1000 / 60
 );
 
-/* =========================================================
+/* =========================
+   NETWORK 20 FPS
+========================= */
+
+setInterval(
+    sendState,
+    1000 / 20
+);
+
+/* =========================
+   SÜRE
+========================= */
+
+setInterval(
+    () => {
+
+        if (players.size === 0) {
+            return;
+        }
+
+        matchTime--;
+
+        if (matchTime <= 0) {
+
+            resetMatch();
+        }
+
+    },
+    1000
+);
+
+/* =========================
    SERVER
-========================================================= */
+========================= */
 
 server.listen(
     PORT,
     () => {
 
         console.log(
-            `Mini HaxBall server ${PORT} portunda çalışıyor.`
+            "Mini HaxBall server çalışıyor."
         );
 
+        console.log(
+            "Port: " +
+            PORT
+        );
     }
 );
