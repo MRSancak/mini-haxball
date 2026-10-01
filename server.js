@@ -7,28 +7,35 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 10;
+
+const MAX_PLAYERS = 12;
+const MAX_TEAM_PLAYERS = 6;
 
 app.use(express.static("public"));
 
-const players = new Map();
-
 const FIELD = {
-    x: 50,
-    y: 50,
-    width: 1000,
-    height: 550
+    x: 40,
+    y: 40,
+    width: 1120,
+    height: 620
 };
 
 const GOAL = {
-    width: 30,
-    height: 180
+    width: 35,
+    height: 210
 };
 
+const PLAYER_RADIUS = 17;
+const PLAYER_SPEED = 4.7;
+
+const BALL_RADIUS = 14;
+const BALL_MAX_SPEED = 15;
+
+const players = new Map();
+
 const ball = {
-    x: 550,
-    y: 325,
-    radius: 15,
+    x: FIELD.x + FIELD.width / 2,
+    y: FIELD.y + FIELD.height / 2,
     vx: 3,
     vy: 0
 };
@@ -36,72 +43,185 @@ const ball = {
 let blueScore = 0;
 let redScore = 0;
 
-function randomId() {
-    return Math.random().toString(36).substring(2, 10);
+function createId() {
+    return Math.random()
+        .toString(36)
+        .substring(2, 10);
+}
+
+function cleanName(name) {
+    if (typeof name !== "string") {
+        return "Oyuncu";
+    }
+
+    name = name
+        .replace(/[<>]/g, "")
+        .trim();
+
+    if (!name) {
+        return "Oyuncu";
+    }
+
+    return name.substring(0, 16);
+}
+
+function getTeam() {
+
+    let blue = 0;
+    let red = 0;
+
+    for (const player of players.values()) {
+        if (player.team === "blue") blue++;
+        if (player.team === "red") red++;
+    }
+
+    if (blue < MAX_TEAM_PLAYERS) {
+        return "blue";
+    }
+
+    if (red < MAX_TEAM_PLAYERS) {
+        return "red";
+    }
+
+    return null;
+}
+
+function spawnPosition(team, index) {
+
+    const startX =
+        team === "blue"
+            ? FIELD.x + 180
+            : FIELD.x + FIELD.width - 180;
+
+    const direction =
+        team === "blue"
+            ? 1
+            : -1;
+
+    const columns = 2;
+
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+
+    return {
+        x: startX + direction * column * 50,
+        y:
+            FIELD.y +
+            170 +
+            row * 85
+    };
 }
 
 function resetBall() {
-    ball.x = 550;
-    ball.y = 325;
-    ball.vx = Math.random() > 0.5 ? 3 : -3;
-    ball.vy = (Math.random() - 0.5) * 2;
+
+    ball.x =
+        FIELD.x +
+        FIELD.width / 2;
+
+    ball.y =
+        FIELD.y +
+        FIELD.height / 2;
+
+    ball.vx =
+        Math.random() > 0.5
+            ? 3
+            : -3;
+
+    ball.vy =
+        (Math.random() - 0.5) * 3;
 }
 
 function resetPlayers() {
-    let blueIndex = 0;
-    let redIndex = 0;
 
-    for (const player of players.values()) {
-        if (player.team === "blue") {
-            player.x = 250 + (blueIndex % 2) * 55;
-            player.y = 230 + Math.floor(blueIndex / 2) * 65;
-            blueIndex++;
-        } else {
-            player.x = 850 - (redIndex % 2) * 55;
-            player.y = 230 + Math.floor(redIndex / 2) * 65;
-            redIndex++;
-        }
+    const bluePlayers =
+        [...players.values()]
+            .filter(p => p.team === "blue");
+
+    const redPlayers =
+        [...players.values()]
+            .filter(p => p.team === "red");
+
+    bluePlayers.forEach((player, index) => {
+
+        const pos =
+            spawnPosition(
+                "blue",
+                index
+            );
+
+        player.x = pos.x;
+        player.y = pos.y;
 
         player.vx = 0;
         player.vy = 0;
-    }
+    });
+
+    redPlayers.forEach((player, index) => {
+
+        const pos =
+            spawnPosition(
+                "red",
+                index
+            );
+
+        player.x = pos.x;
+        player.y = pos.y;
+
+        player.vx = 0;
+        player.vy = 0;
+    });
 
     resetBall();
 }
 
-function addPlayer(ws) {
+function addPlayer(ws, name) {
 
     if (players.size >= MAX_PLAYERS) {
+
         ws.send(JSON.stringify({
             type: "full"
         }));
 
         ws.close();
+
         return;
     }
 
-    const blueCount = [...players.values()]
-        .filter(p => p.team === "blue")
-        .length;
+    const team = getTeam();
 
-    const redCount = [...players.values()]
-        .filter(p => p.team === "red")
-        .length;
+    if (!team) {
 
-    const team = blueCount <= redCount ? "blue" : "red";
+        ws.send(JSON.stringify({
+            type: "full"
+        }));
 
-    const id = randomId();
+        ws.close();
+
+        return;
+    }
+
+    const id = createId();
 
     const player = {
+
         id,
-        ws,
+
+        name: cleanName(name),
+
         team,
-        x: team === "blue" ? 250 : 850,
-        y: 325,
+
+        ws,
+
+        x: 0,
+        y: 0,
+
         vx: 0,
         vy: 0,
-        radius: 20,
-        speed: 4.5,
+
+        radius: PLAYER_RADIUS,
+
+        speed: PLAYER_SPEED,
+
         keys: {
             up: false,
             down: false,
@@ -117,63 +237,92 @@ function addPlayer(ws) {
     ws.send(JSON.stringify({
         type: "welcome",
         id,
-        team
+        team,
+        name: player.name
     }));
 
-    console.log(
-        `Oyuncu katıldı: ${id} (${team}) - ${players.size}/${MAX_PLAYERS}`
-    );
-
     resetPlayers();
+
+    console.log(
+        `${player.name} katıldı (${team}) - ${players.size}/${MAX_PLAYERS}`
+    );
 }
 
 wss.on("connection", ws => {
 
-    addPlayer(ws);
-
-    ws.on("message", message => {
+    ws.on("message", raw => {
 
         let data;
 
         try {
-            data = JSON.parse(message);
+            data = JSON.parse(raw.toString());
         } catch {
             return;
         }
 
-        const player = players.get(ws.playerId);
+        /*
+         * Oyuncu henüz sisteme eklenmediyse
+         * ilk mesaj isim mesajı olmalı.
+         */
+
+        if (!ws.playerId) {
+
+            if (
+                data.type === "join" &&
+                typeof data.name === "string"
+            ) {
+
+                addPlayer(
+                    ws,
+                    data.name
+                );
+            }
+
+            return;
+        }
+
+        const player =
+            players.get(ws.playerId);
 
         if (!player) return;
 
         if (data.type === "input") {
 
-            player.keys = {
-                up: !!data.up,
-                down: !!data.down,
-                left: !!data.left,
-                right: !!data.right
-            };
-        }
+            player.keys.up =
+                !!data.up;
 
-        if (data.type === "reset") {
+            player.keys.down =
+                !!data.down;
 
-            blueScore = 0;
-            redScore = 0;
-            resetPlayers();
+            player.keys.left =
+                !!data.left;
+
+            player.keys.right =
+                !!data.right;
         }
     });
 
     ws.on("close", () => {
 
-        if (ws.playerId) {
-            players.delete(ws.playerId);
+        if (!ws.playerId) {
+            return;
+        }
+
+        const player =
+            players.get(ws.playerId);
+
+        if (player) {
 
             console.log(
-                `Oyuncu ayrıldı. ${players.size}/${MAX_PLAYERS}`
+                `${player.name} ayrıldı`
             );
 
-            resetPlayers();
+            players.delete(
+                ws.playerId
+            );
         }
+
+        resetPlayers();
     });
 });
 
@@ -182,20 +331,35 @@ function movePlayer(player) {
     let dx = 0;
     let dy = 0;
 
-    if (player.keys.left) dx--;
-    if (player.keys.right) dx++;
-    if (player.keys.up) dy--;
-    if (player.keys.down) dy++;
+    if (player.keys.left) {
+        dx--;
+    }
+
+    if (player.keys.right) {
+        dx++;
+    }
+
+    if (player.keys.up) {
+        dy--;
+    }
+
+    if (player.keys.down) {
+        dy++;
+    }
 
     if (dx !== 0 || dy !== 0) {
 
-        const length = Math.hypot(dx, dy);
+        const length =
+            Math.hypot(dx, dy);
 
         dx /= length;
         dy /= length;
 
-        player.vx = dx * player.speed;
-        player.vy = dy * player.speed;
+        player.vx =
+            dx * player.speed;
+
+        player.vy =
+            dy * player.speed;
 
     } else {
 
@@ -209,7 +373,9 @@ function movePlayer(player) {
     player.x = Math.max(
         FIELD.x + player.radius,
         Math.min(
-            FIELD.x + FIELD.width - player.radius,
+            FIELD.x +
+                FIELD.width -
+                player.radius,
             player.x
         )
     );
@@ -217,7 +383,9 @@ function movePlayer(player) {
     player.y = Math.max(
         FIELD.y + player.radius,
         Math.min(
-            FIELD.y + FIELD.height - player.radius,
+            FIELD.y +
+                FIELD.height -
+                player.radius,
             player.y
         )
     );
@@ -225,17 +393,28 @@ function movePlayer(player) {
 
 function collidePlayerBall(player) {
 
-    const dx = ball.x - player.x;
-    const dy = ball.y - player.y;
+    const dx =
+        ball.x - player.x;
 
-    const distance = Math.hypot(dx, dy);
+    const dy =
+        ball.y - player.y;
+
+    const distance =
+        Math.hypot(dx, dy);
+
     const minimum =
-        player.radius + ball.radius;
+        player.radius +
+        BALL_RADIUS;
 
-    if (distance >= minimum) return;
+    if (distance >= minimum) {
+        return;
+    }
 
-    const nx = dx / (distance || 1);
-    const ny = dy / (distance || 1);
+    const nx =
+        dx / (distance || 1);
+
+    const ny =
+        dy / (distance || 1);
 
     ball.x =
         player.x +
@@ -246,25 +425,30 @@ function collidePlayerBall(player) {
         ny * minimum;
 
     ball.vx +=
-        nx * 2.3 +
+        nx * 2.4 +
         player.vx * 0.65;
 
     ball.vy +=
-        ny * 2.3 +
+        ny * 2.4 +
         player.vy * 0.65;
 
     const speed =
-        Math.hypot(ball.vx, ball.vy);
+        Math.hypot(
+            ball.vx,
+            ball.vy
+        );
 
-    const maxSpeed = 14;
-
-    if (speed > maxSpeed) {
+    if (speed > BALL_MAX_SPEED) {
 
         ball.vx =
-            ball.vx / speed * maxSpeed;
+            ball.vx /
+            speed *
+            BALL_MAX_SPEED;
 
         ball.vy =
-            ball.vy / speed * maxSpeed;
+            ball.vy /
+            speed *
+            BALL_MAX_SPEED;
     }
 }
 
@@ -276,37 +460,56 @@ function updateBall() {
     ball.vx *= 0.992;
     ball.vy *= 0.992;
 
+    /*
+     * Üst duvar
+     */
+
     if (
-        ball.y - ball.radius <= FIELD.y
+        ball.y - BALL_RADIUS <=
+        FIELD.y
     ) {
 
         ball.y =
-            FIELD.y + ball.radius;
+            FIELD.y +
+            BALL_RADIUS;
 
         ball.vy *= -0.9;
     }
 
+    /*
+     * Alt duvar
+     */
+
     if (
-        ball.y + ball.radius >=
-        FIELD.y + FIELD.height
+        ball.y + BALL_RADIUS >=
+        FIELD.y +
+        FIELD.height
     ) {
 
         ball.y =
             FIELD.y +
             FIELD.height -
-            ball.radius;
+            BALL_RADIUS;
 
         ball.vy *= -0.9;
     }
 
     const goalTop =
-        325 - GOAL.height / 2;
+        FIELD.y +
+        FIELD.height / 2 -
+        GOAL.height / 2;
 
     const goalBottom =
-        325 + GOAL.height / 2;
+        FIELD.y +
+        FIELD.height / 2 +
+        GOAL.height / 2;
+
+    /*
+     * Sol taraf
+     */
 
     if (
-        ball.x - ball.radius <=
+        ball.x - BALL_RADIUS <=
         FIELD.x
     ) {
 
@@ -323,14 +526,20 @@ function updateBall() {
         }
 
         ball.x =
-            FIELD.x + ball.radius;
+            FIELD.x +
+            BALL_RADIUS;
 
         ball.vx *= -0.9;
     }
 
+    /*
+     * Sağ taraf
+     */
+
     if (
-        ball.x + ball.radius >=
-        FIELD.x + FIELD.width
+        ball.x + BALL_RADIUS >=
+        FIELD.x +
+        FIELD.width
     ) {
 
         if (
@@ -348,19 +557,21 @@ function updateBall() {
         ball.x =
             FIELD.x +
             FIELD.width -
-            ball.radius;
+            BALL_RADIUS;
 
         ball.vx *= -0.9;
     }
 }
 
-function gameUpdate() {
+function updateGame() {
 
     for (const player of players.values()) {
+
         movePlayer(player);
     }
 
     for (const player of players.values()) {
+
         collidePlayerBall(player);
     }
 
@@ -369,35 +580,44 @@ function gameUpdate() {
 
 function broadcast() {
 
-    const playerData = [];
+    const playerData =
+        [...players.values()]
+            .map(player => ({
 
-    for (const player of players.values()) {
+                id: player.id,
 
-        playerData.push({
-            id: player.id,
-            team: player.team,
-            x: player.x,
-            y: player.y
+                name: player.name,
+
+                team: player.team,
+
+                x: player.x,
+
+                y: player.y
+            }));
+
+    const message =
+        JSON.stringify({
+
+            type: "state",
+
+            players: playerData,
+
+            ball: {
+                x: ball.x,
+                y: ball.y
+            },
+
+            score: {
+                blue: blueScore,
+                red: redScore
+            },
+
+            maxPlayers: MAX_PLAYERS,
+
+            field: FIELD,
+
+            goal: GOAL
         });
-    }
-
-    const data = JSON.stringify({
-        type: "state",
-
-        players: playerData,
-
-        ball: {
-            x: ball.x,
-            y: ball.y
-        },
-
-        score: {
-            blue: blueScore,
-            red: redScore
-        },
-
-        maxPlayers: MAX_PLAYERS
-    });
 
     for (const player of players.values()) {
 
@@ -405,22 +625,32 @@ function broadcast() {
             player.ws.readyState ===
             WebSocket.OPEN
         ) {
-            player.ws.send(data);
+
+            player.ws.send(
+                message
+            );
         }
     }
 }
 
+/*
+ * 60 FPS oyun sunucusu
+ */
+
 setInterval(() => {
 
-    gameUpdate();
+    updateGame();
 
     broadcast();
 
 }, 1000 / 60);
 
-server.listen(PORT, () => {
+server.listen(
+    PORT,
+    () => {
 
-    console.log(
-        `Mini HaxBall çalışıyor: http://localhost:${PORT}`
-    );
-});
+        console.log(
+            `Mini HaxBall server: ${PORT}`
+        );
+    }
+);
