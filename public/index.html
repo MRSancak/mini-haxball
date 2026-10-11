@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mini Haxball Pixel</title>
+<title>Mini Haxball Pixel League</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
-:root{--bg:#101820;--panel:#182733;--line:#385263;--cream:#f4efcf;--lime:#c9f06b;--cyan:#64dce8;--muted:#9cb1bb}
+:root{--bg:#101820;--panel:#192b37;--line:#3e5868;--cream:#f4efcf;--lime:#c9f06b;--cyan:#64dce8;--muted:#a0b5bf}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--cream);font:22px 'VT323',monospace}
 button,input{font:inherit}
 button{cursor:pointer;border:0;background:var(--lime);color:#18212a;padding:12px;font:10px 'Press Start 2P';box-shadow:4px 4px #718e39}
+button:disabled{opacity:.45;cursor:not-allowed}
 .secondary{background:#304754;color:var(--cream);box-shadow:4px 4px #090f14}
 .hidden{display:none!important}
-.wrap{max-width:1200px;margin:auto;padding:20px}
+.wrap{max-width:1250px;margin:auto;padding:20px}
 .top,.game-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
 .brand{font:20px/1.7 'Press Start 2P';color:var(--lime)}
 .tag,h2,h3{font-family:'Press Start 2P';font-size:11px;line-height:1.8;color:var(--cyan)}
@@ -23,17 +24,17 @@ input{width:100%;padding:10px;background:#0d171e;color:white;border:2px solid #4
 .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px;margin:45px auto}
 .error{color:#ff8585;min-height:24px}
 .note{color:var(--muted)}
-.dashboard{display:grid;grid-template-columns:300px 1fr;gap:20px}
+.dashboard{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px}
 .profile-top{display:flex;gap:12px;align-items:center}
 .avatar{width:60px;height:60px;display:grid;place-items:center;background:var(--lime);color:#15202a;font-family:'Press Start 2P'}
 .stat{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed var(--line);padding:10px 0}
-.stat b{color:var(--lime);font-weight:normal}
-.server{background:#101c24;border:2px solid var(--line);padding:18px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.stat b{color:var(--lime);font-weight:normal;text-align:right}
+.server{background:#101c24;border:2px solid var(--line);padding:18px;display:flex;align-items:center;justify-content:space-between;gap:15px;margin:12px 0}
 .teams{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .team{padding:14px;background:#111e26;border:3px solid #4aa4f5}
 .team.orange{border-color:#ff9859}
 .slot{padding:6px;border-bottom:1px dashed var(--line)}
-.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .role{background:#15232c;padding:10px;border:2px solid var(--line)}
 .role h3{font-size:9px}
 .score{background:#071016;border:3px solid var(--line);padding:14px;font:14px 'Press Start 2P'}
@@ -43,12 +44,19 @@ input{width:100%;padding:10px;background:#0d171e;color:white;border:2px solid #4
 .sidebox{background:var(--panel);border:3px solid var(--line);padding:12px;margin-bottom:12px}
 .key{display:inline-block;background:#081219;border:2px solid #506773;padding:4px;color:var(--lime)}
 #playersList{max-height:230px;overflow:auto}
-#playersList div{padding:5px 0;border-bottom:1px dashed var(--line)}
 .staminaWrap{margin:12px 0;background:#071016;border:2px solid #b9c7a4;height:25px;position:relative}
 #staminaBar{height:100%;width:100%;background:#c9f06b;transition:width .1s}
 #staminaText{position:absolute;inset:0;text-align:center;font:9px/21px 'Press Start 2P';color:#101820;text-shadow:0 1px #fff}
 .status{min-height:24px;color:var(--muted);margin-top:10px}
 .mobile{display:none;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.modal{position:fixed;inset:0;background:#03090de8;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-card{width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:4px solid var(--lime);padding:22px;box-shadow:8px 8px #000}
+.profile-number{font:24px 'Press Start 2P';color:var(--lime)}
+.goal-overlay{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:#071016d9;text-align:center;padding:20px}
+.goal-card{background:#142630;border:4px solid var(--lime);padding:24px;box-shadow:8px 8px #000;max-width:520px;width:95%}
+.goal-word{font:clamp(28px,5vw,48px) 'Press Start 2P';color:var(--lime);margin-bottom:22px}
+.assist-word{font:clamp(15px,2vw,20px) 'Press Start 2P';color:var(--cyan);line-height:1.8}
+.pitch-wrap{position:relative}
 .footer{text-align:center;color:#728995;margin:25px}
 @media(max-width:800px){.auth-grid,.dashboard,.game-layout{grid-template-columns:1fr}.mobile{display:grid}.wrap{padding:10px}.panel{padding:13px}}
 @media(max-width:450px){.teams{grid-template-columns:1fr}.role-grid{grid-template-columns:1fr}.brand{font-size:14px}.server{align-items:flex-start;flex-direction:column}}
@@ -57,83 +65,153 @@ input{width:100%;padding:10px;background:#0d171e;color:white;border:2px solid #4
 <body>
 <div class="wrap">
 <header class="top">
-  <div><div class="tag">ONLINE FOOTBALL / SEASON 01</div><div class="brand">MINI HAXBALL<br>PIXEL LEAGUE</div></div>
-  <div id="headerRight" class="tag">12 PLAYERS / 1 SERVER</div>
+  <div><div class="tag">ONLINE FOOTBALL / SEASON 02</div><div class="brand">MINI HAXBALL<br>PIXEL LEAGUE</div></div>
+  <div id="headerRight" class="tag">12 OYUNCU / 1 SUNUCU</div>
 </header>
 
 <section id="authView">
 <div class="auth-grid">
-<div class="panel">
-<h2>GİRİŞ YAP</h2>
-<form id="loginForm">
-<label>Ana kullanıcı adı</label><input name="username" required autocomplete="username">
-<label>Şifre</label><input name="password" type="password" required autocomplete="current-password">
-<div id="loginError" class="error"></div><button>OYUNA GİR</button>
-</form></div>
-<div class="panel">
-<h2>HESAP OLUŞTUR</h2>
-<form id="registerForm">
-<label>Görünen isim</label><input name="displayName" minlength="2" maxlength="18" required>
-<label>Ana kullanıcı adı</label><input name="username" minlength="3" maxlength="18" pattern="[A-Za-z0-9_]+" required>
-<label>Forma numarası</label><input name="number" type="number" min="1" max="99" value="10" required>
-<label>Şifre</label><input name="password" type="password" minlength="6" required autocomplete="new-password">
-<div id="registerError" class="error"></div><button>HESAP AÇ</button>
-</form></div></div></section>
+  <div class="panel">
+    <h2>GİRİŞ YAP</h2>
+    <form id="loginForm">
+      <label>Kullanıcı adı</label><input name="username" required autocomplete="username">
+      <label>Şifre</label><input name="password" type="password" required autocomplete="current-password">
+      <div id="loginError" class="error"></div><button>OYUNA GİR</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h2>HESAP OLUŞTUR</h2>
+    <form id="registerForm">
+      <label>Görünen isim</label><input name="displayName" minlength="2" maxlength="18" required>
+      <label>Kullanıcı adı</label><input name="username" minlength="3" maxlength="18" pattern="[A-Za-z0-9_]+" required>
+      <label>Forma numarası</label><input name="number" type="number" min="1" max="99" value="10" required>
+      <label>Şifre</label><input name="password" type="password" minlength="6" required autocomplete="new-password">
+      <div id="registerError" class="error"></div><button>HESAP AÇ</button>
+    </form>
+  </div>
+</div>
+</section>
 
 <section id="dashboardView" class="hidden">
 <div class="dashboard">
-<aside class="panel">
-<h2>OYUNCU KARTI</h2><div class="profile-top">
-<div id="avatar" class="avatar">10</div><div><div id="displayName"></div><div id="usernameLabel" class="tag"></div></div></div>
-<div class="stat"><span>Görünen isim</span><b id="profileName"></b></div>
-<div class="stat"><span>Kullanıcı adı</span><b id="profileUser"></b></div>
-<div class="stat"><span>Forma no</span><b id="profileNumber"></b></div>
-<button class="secondary" id="logoutBtn" style="width:100%">ÇIKIŞ YAP</button>
-</aside>
-<main class="panel"><h2>SUNUCU LİSTESİ</h2>
-<div class="server"><div><div class="tag">EU / PUBLIC</div><h2>PIXEL ARENA #01</h2><div class="note">● AÇIK · 6v6 · 5 dakika</div></div><button id="joinServerBtn">SUNUCUYA GİR</button></div>
-<div id="dashboardError" class="error"></div></main>
-</div></section>
+  <aside class="panel">
+    <h2>OYUNCU KARTI</h2>
+    <div class="profile-top"><div id="avatar" class="avatar">10</div><div><div id="displayName"></div><div id="usernameLabel" class="tag"></div></div></div>
+    <div class="stat"><span>Görünen isim</span><b id="profileName"></b></div>
+    <div class="stat"><span>Kullanıcı adı</span><b id="profileUser"></b></div>
+    <div class="stat"><span>Forma no</span><b id="profileNumber"></b></div>
+    <div class="stat"><span>Oynanan maç</span><b id="myMatches">0</b></div>
+    <div class="stat"><span>Gol</span><b id="myGoals">0</b></div>
+    <div class="stat"><span>Asist</span><b id="myAssists">0</b></div>
+    <div class="stat"><span>En çok oynanan mevki</span><b id="myRole">Henüz yok</b></div>
+    <button class="secondary" id="logoutBtn" style="width:100%;margin-top:12px">ÇIKIŞ YAP</button>
+  </aside>
+  <main class="panel">
+    <h2>SUNUCU LİSTESİ</h2>
+    <div class="server">
+      <div><div class="tag">EU / PUBLIC</div><h2>PIXEL ARENA #01</h2><div class="note">● AÇIK · 6v6 · 5 dakika</div></div>
+      <button id="joinServerBtn">SUNUCUYA GİR</button>
+    </div>
+    <div class="panel" style="margin-top:20px">
+      <h2>OYUNCU PROFİLİ ARA</h2>
+      <label>Oyuncunun kullanıcı adını yaz</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="profileSearchInput" placeholder="ör. oyuncu_10" style="flex:1;min-width:180px">
+        <button id="profileSearchBtn">ARA</button>
+      </div>
+      <div id="profileSearchError" class="error"></div>
+      <p class="note">Arama, görünen isme değil ana kullanıcı adına göre yapılır.</p>
+    </div>
+    <div id="dashboardError" class="error"></div>
+  </main>
+</div>
+</section>
 
 <section id="lobbyView" class="hidden">
-<div class="panel"><div class="game-head"><h2>TAKIMINI VE MEVKİNİ SEÇ</h2><button id="backLobbyBtn" class="secondary">GERİ DÖN</button></div>
-<div class="teams">
-<div class="team"><h3 style="color:#79bdff">MAVİ TAKIM</h3><div id="blueSlots"></div>
-<div class="role-grid">
-<div class="role"><h3>KALECİ · 1</h3><button data-team="0" data-role="GK">SEÇ</button></div>
-<div class="role"><h3>DEFANS · 2</h3><button data-team="0" data-role="DEF">SEÇ</button></div>
-<div class="role"><h3>ORTA SAHA · 1</h3><button data-team="0" data-role="MID">SEÇ</button></div>
-<div class="role"><h3>FORVET · 2</h3><button data-team="0" data-role="FWD">SEÇ</button></div>
-</div></div>
-<div class="team orange"><h3 style="color:#ffad72">TURUNCU TAKIM</h3><div id="orangeSlots"></div>
-<div class="role-grid">
-<div class="role"><h3>KALECİ · 1</h3><button data-team="1" data-role="GK">SEÇ</button></div>
-<div class="role"><h3>DEFANS · 2</h3><button data-team="1" data-role="DEF">SEÇ</button></div>
-<div class="role"><h3>ORTA SAHA · 1</h3><button data-team="1" data-role="MID">SEÇ</button></div>
-<div class="role"><h3>FORVET · 2</h3><button data-team="1" data-role="FWD">SEÇ</button></div>
-</div></div></div>
-<div id="lobbyStatus" class="status">Takım ve mevki seç.</div><button id="enterPitchBtn">SAHAYA GEÇ</button>
-</div></section>
+<div class="panel">
+  <div class="game-head"><h2>TAKIMINI VE MEVKİNİ SEÇ</h2><button id="backLobbyBtn" class="secondary">GERİ DÖN</button></div>
+  <div class="teams">
+    <div class="team">
+      <h3 style="color:#79bdff">MAVİ TAKIM</h3><div id="blueSlots"></div>
+      <div class="role-grid">
+        <div class="role"><h3>DEFANS · 2</h3><button data-team="0" data-role="DEF">SEÇ</button></div>
+        <div class="role"><h3>ORTA SAHA · 3</h3><button data-team="0" data-role="MID">SEÇ</button></div>
+        <div class="role"><h3>FORVET · 1</h3><button data-team="0" data-role="FWD">SEÇ</button></div>
+      </div>
+    </div>
+    <div class="team orange">
+      <h3 style="color:#ffad72">TURUNCU TAKIM</h3><div id="orangeSlots"></div>
+      <div class="role-grid">
+        <div class="role"><h3>DEFANS · 2</h3><button data-team="1" data-role="DEF">SEÇ</button></div>
+        <div class="role"><h3>ORTA SAHA · 3</h3><button data-team="1" data-role="MID">SEÇ</button></div>
+        <div class="role"><h3>FORVET · 1</h3><button data-team="1" data-role="FWD">SEÇ</button></div>
+      </div>
+    </div>
+  </div>
+  <div id="lobbyStatus" class="status">Takım ve mevki seç.</div><button id="enterPitchBtn">SAHAYA GEÇ</button>
+</div>
+</section>
 
 <section id="gameView" class="hidden">
-<div class="game-head"><div><div class="tag">PIXEL ARENA / LIVE MATCH</div><div class="score"><span id="blueScore">0</span> MAVİ — <span id="orangeScore">0</span> TURUNCU</div></div>
-<div class="score">SÜRE <span id="timeLeft">05:00</span></div><button class="secondary" id="leaveGameBtn">LOBİYE DÖN</button></div>
-<div class="game-layout"><div>
-<canvas id="pitch" width="1000" height="600"></canvas>
-<div class="staminaWrap"><div id="staminaBar"></div><div id="staminaText">STAMINA 100%</div></div>
-<div class="mobile">
-<button data-key="up">▲</button><button data-key="kick">SPACE</button><button data-key="pass">PAS</button>
-<button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
-<button data-key="tackle" class="secondary" style="grid-column:span 3">TOP KAP</button>
-</div><div id="gameStatus" class="status">Bağlantı bekleniyor.</div>
-</div><aside><div class="sidebox"><h3>KONTROLLER</h3>
-<p><span class="key">W A S D</span> / Oklar: Hareket</p>
-<p><span class="key">SPACE</span> Şut veya top kapma</p>
-<p><span class="key">SHIFT</span> Pas</p>
-<p>Stamina boşalınca hız %75 azalır.</p></div>
-<div class="sidebox"><h3>SAHADAKİLER</h3><div id="playersList"></div></div></aside></div>
+  <div class="game-head">
+    <div><div class="tag">PIXEL ARENA / LIVE MATCH</div><div class="score"><span id="blueScore">0</span> MAVİ — <span id="orangeScore">0</span> TURUNCU</div></div>
+    <div class="score">SÜRE <span id="timeLeft">05:00</span></div>
+    <button class="secondary" id="leaveGameBtn">LOBİYE DÖN</button>
+  </div>
+  <div class="game-layout">
+    <div>
+      <div class="pitch-wrap">
+        <canvas id="pitch" width="1000" height="600"></canvas>
+        <div id="goalOverlay" class="goal-overlay hidden">
+          <div class="goal-card">
+            <div class="goal-word">GOOOL!</div>
+            <div id="goalScorer" class="assist-word">Golü atan: -</div>
+            <div id="goalAssist" class="assist-word" style="margin-top:14px">Asist: -</div>
+            <div id="goalTeam" class="tag" style="margin-top:20px">TAKIM</div>
+            <p id="goalCountdown" class="note">Santra 5 saniye içinde</p>
+          </div>
+        </div>
+      </div>
+      <div class="staminaWrap"><div id="staminaBar"></div><div id="staminaText">STAMINA 100%</div></div>
+      <div class="mobile">
+        <button data-key="up">▲</button><button data-key="kick">SPACE</button><button data-key="pass">PAS</button>
+        <button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
+        <button data-key="tackle" class="secondary" style="grid-column:span 3">TOP KAP</button>
+      </div>
+      <div id="gameStatus" class="status">Bağlantı bekleniyor.</div>
+    </div>
+    <aside>
+      <div class="sidebox"><h3>TAKIM RENKLERİ</h3><p style="color:#79bdff">■ Mavi takım — sol kale</p><p style="color:#ffad72">■ Turuncu takım — sağ kale</p></div>
+      <div class="sidebox"><h3>KONTROLLER</h3>
+        <p><span class="key">W A S D</span> / Oklar: Hareket</p>
+        <p><span class="key">SPACE</span> Şut veya top kapma</p>
+        <p><span class="key">SHIFT</span> Pas</p>
+        <p>Stamina biterse hız %75 azalır.</p>
+      </div>
+      <div class="sidebox"><h3>SAHADAKİLER</h3><div id="playersList"></div></div>
+    </aside>
+  </div>
 </section>
+
 <div class="footer">MINI HAXBALL PIXEL LEAGUE</div>
+</div>
+
+<div id="profileModal" class="modal hidden">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <h2>OYUNCU PROFİLİ</h2><button id="closeProfileBtn" class="secondary">KAPAT</button>
+    </div>
+    <div class="profile-top" style="margin:20px 0">
+      <div id="searchedAvatar" class="avatar">10</div>
+      <div><div id="searchedName" class="profile-number"></div><div id="searchedUsername" class="tag"></div></div>
+    </div>
+    <div class="stat"><span>Forma numarası</span><b id="searchedNumber"></b></div>
+    <div class="stat"><span>Oynanan maç</span><b id="searchedMatches"></b></div>
+    <div class="stat"><span>Attığı gol</span><b id="searchedGoals"></b></div>
+    <div class="stat"><span>Yaptığı asist</span><b id="searchedAssists"></b></div>
+    <div class="stat"><span>En çok oynadığı mevki</span><b id="searchedRole"></b></div>
+    <div id="profileModalError" class="error"></div>
+  </div>
 </div>
 
 <script>
@@ -141,167 +219,481 @@ input{width:100%;padding:10px;background:#0d171e;color:white;border:2px solid #4
 'use strict';
 const $ = id => document.getElementById(id);
 const views = ['authView','dashboardView','lobbyView','gameView'];
-const roleNames = {GK:'Kaleci',DEF:'Defans',MID:'Orta saha',FWD:'Forvet'};
-let user=null,ws=null,myId=null,state=null,selected=false;
-let keys={},actionQueued=null,lastSend=0;
+const roleNames = {DEF:'Defans',MID:'Orta saha',FWD:'Forvet'};
+let user = null, ws = null, myId = null, state = null, selected = false;
+let keys = {}, actionQueued = null, lastSend = 0, lastGoalId = null;
 
-function show(id){views.forEach(v=>$(v).classList.toggle('hidden',v!==id));}
-function err(id,msg){$(id).textContent=msg||'';}
-async function api(url,data){
- const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
- const j=await r.json();if(!r.ok)throw Error(j.error||'İşlem başarısız');return j;
+function show(id) {
+  views.forEach(v => $(v).classList.toggle('hidden', v !== id));
 }
-function setUser(u){
- user=u;sessionStorage.setItem('mh_user',JSON.stringify(u));
- $('avatar').textContent=String(u.number).padStart(2,'0');
- $('displayName').textContent=u.displayName;$('usernameLabel').textContent='@'+u.username;
- $('profileName').textContent=u.displayName;$('profileUser').textContent=u.username;
- $('profileNumber').textContent='#'+u.number;show('dashboardView');
+function err(id, msg) { $(id).textContent = msg || ''; }
+async function api(url, data) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  const j = await r.json();
+  if (!r.ok) throw Error(j.error || 'İşlem başarısız');
+  return j;
 }
-$('registerForm').onsubmit=async e=>{
- e.preventDefault();err('registerError','');const f=new FormData(e.currentTarget);
- try{const r=await api('/api/register',{displayName:f.get('displayName'),username:f.get('username'),number:Number(f.get('number')),password:f.get('password')});setUser(r.user);}
- catch(x){err('registerError',x.message);}
+function setUser(u) {
+  user = u;
+  sessionStorage.setItem('mh_user', JSON.stringify(u));
+  renderOwnProfile(u);
+  show('dashboardView');
+}
+function renderOwnProfile(u) {
+  $('avatar').textContent = String(u.number).padStart(2,'0');
+  $('displayName').textContent = u.displayName;
+  $('usernameLabel').textContent = '@' + u.username;
+  $('profileName').textContent = u.displayName;
+  $('profileUser').textContent = u.username;
+  $('profileNumber').textContent = '#' + u.number;
+  const st = u.stats || {};
+  $('myMatches').textContent = st.matches || 0;
+  $('myGoals').textContent = st.goals || 0;
+  $('myAssists').textContent = st.assists || 0;
+  $('myRole').textContent = st.mostPlayedRole || 'Henüz yok';
+}
+async function refreshOwnProfile() {
+  if (!user) return;
+  try {
+    const r = await fetch('/api/profile/' + encodeURIComponent(user.username));
+    const j = await r.json();
+    if (r.ok) {
+      user = j.user;
+      sessionStorage.setItem('mh_user', JSON.stringify(user));
+      renderOwnProfile(user);
+    }
+  } catch {}
+}
+
+$('registerForm').onsubmit = async e => {
+  e.preventDefault(); err('registerError','');
+  const f = new FormData(e.currentTarget);
+  try {
+    const r = await api('/api/register', {
+      displayName: f.get('displayName'),
+      username: f.get('username'),
+      number: Number(f.get('number')),
+      password: f.get('password')
+    });
+    setUser(r.user);
+  } catch (x) { err('registerError', x.message); }
 };
-$('loginForm').onsubmit=async e=>{
- e.preventDefault();err('loginError','');const f=new FormData(e.currentTarget);
- try{const r=await api('/api/login',{username:f.get('username'),password:f.get('password')});setUser(r.user);}
- catch(x){err('loginError',x.message);}
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault(); err('loginError','');
+  const f = new FormData(e.currentTarget);
+  try {
+    const r = await api('/api/login', {
+      username: f.get('username'),
+      password: f.get('password')
+    });
+    setUser(r.user);
+  } catch (x) { err('loginError', x.message); }
 };
-$('logoutBtn').onclick=()=>{leave();user=null;sessionStorage.clear();show('authView');};
-$('joinServerBtn').onclick=()=>{connect();show('lobbyView');};
-$('backLobbyBtn').onclick=()=>{leave();show('dashboardView');};
-$('enterPitchBtn').onclick=()=>{if(!selected){$('lobbyStatus').textContent='Önce takım ve mevki seç.';return;}show('gameView');};
-$('leaveGameBtn').onclick=()=>{keys={};actionQueued=null;show('lobbyView');};
 
-document.querySelectorAll('[data-team][data-role]').forEach(b=>b.onclick=()=>{
- if(!ws||ws.readyState!==WebSocket.OPEN){$('lobbyStatus').textContent='Sunucu bağlantısı bekleniyor.';return;}
- ws.send(JSON.stringify({type:'select',team:Number(b.dataset.team),role:b.dataset.role}));
+$('logoutBtn').onclick = () => {
+  leave();
+  user = null;
+  sessionStorage.clear();
+  show('authView');
+};
+
+$('joinServerBtn').onclick = () => {
+  connect();
+  show('lobbyView');
+};
+
+$('backLobbyBtn').onclick = () => {
+  leave();
+  show('dashboardView');
+};
+
+$('enterPitchBtn').onclick = () => {
+  if (!selected) {
+    $('lobbyStatus').textContent = 'Önce takım ve mevki seç.';
+    return;
+  }
+  show('gameView');
+};
+
+$('leaveGameBtn').onclick = () => {
+  keys = {};
+  actionQueued = null;
+  show('lobbyView');
+};
+
+$('profileSearchBtn').onclick = searchProfile;
+$('profileSearchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchProfile();
+});
+$('closeProfileBtn').onclick = () => $('profileModal').classList.add('hidden');
+$('profileModal').addEventListener('click', e => {
+  if (e.target === $('profileModal')) $('profileModal').classList.add('hidden');
 });
 
-function connect(){
- if(ws&&(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;
- ws=new WebSocket((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host);
- ws.onopen=()=>ws.send(JSON.stringify({type:'auth',username:user.username,token:'pixel:'+user.username}));
- ws.onmessage=e=>{
-  let m;try{m=JSON.parse(e.data)}catch{return}
-  if(m.type==='error'){$('lobbyStatus').textContent=m.message;$('gameStatus').textContent=m.message;return;}
-  if(m.type==='joined'){myId=m.id;$('lobbyStatus').textContent='Bağlandın. Mevki seç.';}
-  if(m.type==='selected'){selected=true;$('lobbyStatus').textContent=(m.team===0?'Mavi':'Turuncu')+' takımında '+m.roleName+' seçtin.';}
-  if(m.type==='state'){state=m;renderLobby(m);renderGame(m);}
- };
- ws.onclose=()=>{$('gameStatus').textContent='Bağlantı kesildi.';};
- ws.onerror=()=>{$('lobbyStatus').textContent='Sunucu bağlantı hatası.';};
-}
-function leave(){if(ws){ws.onclose=null;ws.close();ws=null;}myId=null;selected=false;state=null;}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function renderLobby(s){
- const blue=s.players.filter(p=>p.team===0),orange=s.players.filter(p=>p.team===1);
- function slots(list){return ['GK','DEF','MID','FWD'].map(role=>{
-  let html='',n=role==='DEF'||role==='FWD'?2:1;
-  for(let i=0;i<n;i++){const p=list.filter(x=>x.role===role)[i];html+='<div class="slot">'+(p?'#'+p.number+' '+esc(p.name):'□ BOŞ')+(p&&p.id===myId?' (SEN)':'')+'</div>';}
-  return html;
- }).join('');}
- $('blueSlots').innerHTML=slots(blue);$('orangeSlots').innerHTML=slots(orange);
- $('headerRight').textContent=s.players.length+'/12 OYUNCU / 1 SUNUCU';
-}
-const canvas=$('pitch'),ctx=canvas.getContext('2d');
-ctx.imageSmoothingEnabled=false;
-function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
-function drawPitch(s){
- const w=1000,h=600;ctx.clearRect(0,0,w,h);
- // Kareli piksel çim
- for(let y=0;y<h;y+=40)for(let x=0;x<w;x+=40)
-  rect(x,y,40,40,((x/40+y/40)%2===0)?'#4d9652':'#43874a');
+async function searchProfile() {
+  const username = $('profileSearchInput').value.trim().toLowerCase();
+  err('profileSearchError','');
 
- // Saha çizgileri
- ctx.strokeStyle='#e5edc5';ctx.lineWidth=4;
- ctx.strokeRect(18,18,964,564);
- ctx.beginPath();ctx.moveTo(500,18);ctx.lineTo(500,582);ctx.stroke();
- ctx.beginPath();ctx.arc(500,300,76,0,Math.PI*2);ctx.stroke();
- ctx.strokeRect(18,190,145,220);ctx.strokeRect(837,190,145,220);
- ctx.strokeRect(18,245,55,110);ctx.strokeRect(927,245,55,110);
+  if (!username) {
+    err('profileSearchError','Bir kullanıcı adı yaz.');
+    return;
+  }
 
- // Kaleler: dışa uzayan ağ ve kalın direkler.
- // Sol kale çizgisi x=18; sağ kale çizgisi x=982.
- rect(0,246,18,108,'#e8e6c9');rect(0,246,18,7,'#fffbe4');rect(0,347,18,7,'#fffbe4');
- rect(0,246,5,108,'#c6c5ad');rect(0,246,18,5,'#fffbe4');rect(0,349,18,5,'#fffbe4');
- rect(982,246,18,108,'#e8e6c9');rect(982,246,18,5,'#fffbe4');rect(982,349,18,5,'#fffbe4');
- rect(995,246,5,108,'#c6c5ad');
- // Kale ağının kareleri
- for(let y=254;y<347;y+=12){rect(3,y,12,2,'#b7c4b1');rect(986,y,11,2,'#b7c4b1');}
- for(let x=4;x<17;x+=6){rect(x,253,2,94,'#b7c4b1');}
- for(let x=984;x<998;x+=6){rect(x,253,2,94,'#b7c4b1');}
+  try {
+    const r = await fetch('/api/profile/' + encodeURIComponent(username));
+    const j = await r.json();
 
- // Oyuncular ve bakış yönleri
- for(const p of s.players){
-  if(p.team===null)continue;
-  const x=Math.round(p.x),y=Math.round(p.y),blue=p.team===0;
-  const shirt=blue?'#56b7ff':'#ff9859',dark=blue?'#2367aa':'#b54b37';
-  rect(x-10,y+10,20,5,'#25402b');
-  rect(x-7,y+5,5,8,'#20242b');rect(x+2,y+5,5,8,'#20242b');
-  rect(x-9,y-8,18,15,shirt);rect(x-6,y-14,12,7,'#efc49b');
-  rect(x-6,y-16,12,3,'#342d29');rect(x-8,y-3,16,3,dark);
-  // Yüz ve gözler baktığı yöne göre çizilir.
-  const fx=p.facingX||1,fy=p.facingY||0;
-  const ex=x+fx*3,ey=y-11+fy*3;
-  rect(ex-2,ey-1,2,2,'#17202a');rect(ex+2,ey-1,2,2,'#17202a');
-  if(p.role==='GK'){rect(x-11,y-9,3,7,'#fff0a8');rect(x+8,y-9,3,7,'#fff0a8');}
-  if(p.id===myId){rect(x-14,y-25,28,2,'#d9ff73');rect(x-14,y+16,28,2,'#d9ff73');}
-  ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 12px monospace';
-  ctx.fillText(String(p.number),x,y+2);ctx.font='12px monospace';
-  ctx.fillText(p.name.slice(0,13),x,y-22);
- }
- // Top en son çizilir, oyuncu dururken de görünür.
- const b=s.ball;
- if(b){
-  rect(b.x-7,b.y-7,14,14,'#fff7d8');
-  rect(b.x-3,b.y-3,6,6,'#17232b');
-  rect(b.x-1,b.y-7,2,14,'#17232b');
-  rect(b.x-7,b.y-1,14,2,'#17232b');
- }
+    if (!r.ok) throw Error(j.error || 'Profil bulunamadı.');
+
+    const p = j.user, st = p.stats || {};
+    $('searchedAvatar').textContent = String(p.number).padStart(2,'0');
+    $('searchedName').textContent = p.displayName;
+    $('searchedUsername').textContent = '@' + p.username;
+    $('searchedNumber').textContent = '#' + p.number;
+    $('searchedMatches').textContent = st.matches || 0;
+    $('searchedGoals').textContent = st.goals || 0;
+    $('searchedAssists').textContent = st.assists || 0;
+    $('searchedRole').textContent = st.mostPlayedRole || 'Henüz yok';
+    err('profileModalError','');
+    $('profileModal').classList.remove('hidden');
+  } catch (x) {
+    err('profileSearchError', x.message);
+  }
 }
-function renderGame(s){
- $('blueScore').textContent=s.world.score[0];$('orangeScore').textContent=s.world.score[1];
- const secs=Math.ceil(s.world.remaining/1000);
- $('timeLeft').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
- const me=s.players.find(p=>p.id===myId);
- const stamina=me?Math.max(0,Math.min(100,me.stamina)):100;
- $('staminaBar').style.width=stamina+'%';
- $('staminaBar').style.background=stamina<25?'#ff6969':stamina<50?'#f3ca57':'#c9f06b';
- $('staminaText').textContent='STAMINA '+Math.round(stamina)+'%';
- $('playersList').innerHTML=s.players.map(p=>'<div style="color:'+(p.team===0?'#79bdff':'#ffb37a')+'">'+(p.id===myId?'▶ ':'')+'#'+p.number+' '+esc(p.name)+' '+(p.role?roleNames[p.role]:'Mevki seçmedi')+(p.hasBall?' ⚽':'')+'</div>').join('');
- drawPitch(s);
-}
-const keyMap={w:'up',ArrowUp:'up',s:'down',ArrowDown:'down',a:'left',ArrowLeft:'left',d:'right',ArrowRight:'right'};
-window.addEventListener('keydown',e=>{
- if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
- if(e.repeat&&[' ','Shift'].includes(e.key))return;
- if(keyMap[e.key])keys[keyMap[e.key]]=true;
- if(e.key===' ')actionQueued='kick';
- if(e.key==='Shift')actionQueued='pass';
+
+document.querySelectorAll('[data-team][data-role]').forEach(b => {
+  b.onclick = () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      $('lobbyStatus').textContent = 'Sunucu bağlantısı bekleniyor.';
+      return;
+    }
+    ws.send(JSON.stringify({
+      type:'select',
+      team:Number(b.dataset.team),
+      role:b.dataset.role
+    }));
+  };
 });
-window.addEventListener('keyup',e=>{if(keyMap[e.key])keys[keyMap[e.key]]=false;});
-window.addEventListener('blur',()=>{keys={};});
-document.querySelectorAll('[data-key]').forEach(b=>{
- const k=b.dataset.key;
- b.addEventListener('pointerdown',e=>{
-  e.preventDefault();
-  if(['up','down','left','right'].includes(k))keys[k]=true;
-  else if(k==='kick')actionQueued='kick';
-  else if(k==='pass')actionQueued='pass';
-  else if(k==='tackle')actionQueued='tackle';
- });
- const up=e=>{e.preventDefault();if(['up','down','left','right'].includes(k))keys[k]=false;};
- b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);
+
+function connect() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({
+      type:'auth',
+      username:user.username,
+      token:'pixel:' + user.username
+    }));
+  };
+
+  ws.onmessage = e => {
+    let m;
+    try { m = JSON.parse(e.data); } catch { return; }
+
+    if (m.type === 'error') {
+      $('lobbyStatus').textContent = m.message;
+      $('gameStatus').textContent = m.message;
+      return;
+    }
+
+    if (m.type === 'joined') {
+      myId = m.id;
+      $('lobbyStatus').textContent = 'Bağlandın. Takım ve mevki seç.';
+    }
+
+    if (m.type === 'selected') {
+      selected = true;
+      $('lobbyStatus').textContent =
+        (m.team === 0 ? 'Mavi' : 'Turuncu') + ' takımında ' + m.roleName + ' seçtin.';
+    }
+
+    if (m.type === 'state') {
+      state = m;
+      renderLobby(m);
+      renderGame(m);
+      if (m.world.goalEvent) showGoal(m.world.goalEvent);
+      else {
+        $('goalOverlay').classList.add('hidden');
+        lastGoalId = null;
+      }
+    }
+  };
+
+  ws.onclose = () => {
+    $('gameStatus').textContent = 'Bağlantı kesildi.';
+  };
+
+  ws.onerror = () => {
+    $('lobbyStatus').textContent = 'Sunucu bağlantı hatası.';
+  };
+}
+
+function leave() {
+  if (ws) {
+    ws.onclose = null;
+    ws.close();
+    ws = null;
+  }
+  myId = null;
+  selected = false;
+  state = null;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+function renderLobby(s) {
+  const blue = s.players.filter(p => p.team === 0);
+  const orange = s.players.filter(p => p.team === 1);
+
+  function slots(list) {
+    return ['DEF','MID','FWD'].map(role => {
+      let html = '';
+      for (let i = 0; i < ({DEF:2,MID:3,FWD:1}[role]); i++) {
+        const p = list.filter(x => x.role === role)[i];
+        html += '<div class="slot">' +
+          (p ? '#' + p.number + ' ' + esc(p.name) : '□ BOŞ') +
+          (p && p.id === myId ? ' (SEN)' : '') + '</div>';
+      }
+      return '<h3>' + roleNames[role] + '</h3>' + html;
+    }).join('');
+  }
+
+  $('blueSlots').innerHTML = slots(blue);
+  $('orangeSlots').innerHTML = slots(orange);
+  $('headerRight').textContent = s.players.length + '/12 OYUNCU / 1 SUNUCU';
+}
+
+const canvas = $('pitch');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function rect(x,y,w,h,c) {
+  ctx.fillStyle = c;
+  ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
+}
+
+function drawPitch(s) {
+  const w = 1000, h = 600;
+  ctx.clearRect(0,0,w,h);
+
+  // Kale arkasındaki tribünler: mavi solda, turuncu sağda.
+  rect(0,0,1000,600,'#387f45');
+  rect(0,0,18,600,'#2878c8');
+  rect(982,0,18,600,'#d87538');
+
+  // Üst ve alt tribün şeritleri, takım taraflarına göre renklenir.
+  rect(18,0,482,18,'#286eb7');
+  rect(500,0,482,18,'#c96830');
+  rect(18,582,482,18,'#286eb7');
+  rect(500,582,482,18,'#c96830');
+
+  for (let y=20;y<580;y+=40) {
+    for (let x=20;x<980;x+=40) {
+      rect(x,y,40,40,((x/40+y/40)%2===0)?'#4d9652':'#43874a');
+    }
+  }
+
+  ctx.strokeStyle='#e5edc5';
+  ctx.lineWidth=4;
+  ctx.strokeRect(20,20,960,560);
+  ctx.beginPath();
+  ctx.moveTo(500,20); ctx.lineTo(500,580); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(500,300,76,0,Math.PI*2); ctx.stroke();
+  ctx.strokeRect(20,190,145,220);
+  ctx.strokeRect(835,190,145,220);
+  ctx.strokeRect(20,245,55,110);
+  ctx.strokeRect(925,245,55,110);
+
+  // Kale ağı ve direkleri.
+  rect(0,246,20,108,'#e8e6c9');
+  rect(0,246,20,5,'#fffbe4');
+  rect(0,349,20,5,'#fffbe4');
+  rect(0,246,5,108,'#c6c5ad');
+  rect(980,246,20,108,'#e8e6c9');
+  rect(980,246,20,5,'#fffbe4');
+  rect(980,349,20,5,'#fffbe4');
+  rect(995,246,5,108,'#c6c5ad');
+
+  for(let y=255;y<347;y+=12) {
+    rect(3,y,14,2,'#aebcad');
+    rect(983,y,14,2,'#aebcad');
+  }
+  for(let x=4;x<18;x+=6) rect(x,254,2,94,'#aebcad');
+  for(let x=984;x<998;x+=6) rect(x,254,2,94,'#aebcad');
+
+  // Oyuncular.
+  for (const p of s.players) {
+    if (p.team === null) continue;
+    const x=Math.round(p.x), y=Math.round(p.y);
+    const blue=p.team===0;
+    const shirt=blue?'#56b7ff':'#ff9859';
+    const dark=blue?'#2367aa':'#b54b37';
+
+    rect(x-10,y+10,20,5,'#25402b');
+    rect(x-7,y+5,5,8,'#20242b');
+    rect(x+2,y+5,5,8,'#20242b');
+    rect(x-9,y-8,18,15,shirt);
+    rect(x-6,y-14,12,7,'#efc49b');
+    rect(x-6,y-16,12,3,'#342d29');
+    rect(x-8,y-3,16,3,dark);
+
+    const fx=p.facingX||1, fy=p.facingY||0;
+    const ex=x+fx*3, ey=y-11+fy*3;
+    rect(ex-2,ey-1,2,2,'#17202a');
+    rect(ex+2,ey-1,2,2,'#17202a');
+
+    if(p.id===myId) {
+      rect(x-14,y-25,28,2,'#d9ff73');
+      rect(x-14,y+16,28,2,'#d9ff73');
+    }
+
+    ctx.textAlign='center';
+    ctx.fillStyle='#fff';
+    ctx.font='bold 12px monospace';
+    ctx.fillText(String(p.number),x,y+2);
+    ctx.font='12px monospace';
+    ctx.fillText(p.name.slice(0,13),x,y-22);
+  }
+
+  // Top, oyuncuların üzerinde çizilir; dururken kaybolmaz.
+  const b=s.ball;
+  if (b) {
+    rect(b.x-7,b.y-7,14,14,'#fff7d8');
+    rect(b.x-3,b.y-3,6,6,'#17232b');
+    rect(b.x-1,b.y-7,2,14,'#17232b');
+    rect(b.x-7,b.y-1,14,2,'#17232b');
+  }
+}
+
+function showGoal(g) {
+  const id = g.expiresAt;
+  if (lastGoalId !== id) {
+    lastGoalId = id;
+    const scorer = g.scorer;
+    const assist = g.assist;
+    $('goalScorer').textContent = scorer
+      ? 'Golü atan: ' + scorer.name + ' (#' + scorer.number + ')'
+      : 'Golü atan: Belirlenemedi';
+    $('goalAssist').textContent = assist
+      ? 'Asist: ' + assist.name + ' (#' + assist.number + ')'
+      : 'Asist: Yok';
+    $('goalTeam').textContent = g.team === 0 ? 'MAVİ TAKIM GOL ATTI' : 'TURUNCU TAKIM GOL ATTI';
+  }
+
+  const left = Math.max(0, Math.ceil((g.expiresAt-Date.now())/1000));
+  $('goalCountdown').textContent = left > 0
+    ? 'Santra ' + left + ' saniye içinde'
+    : 'Santra yapılıyor';
+
+  $('goalOverlay').classList.remove('hidden');
+}
+
+function renderGame(s) {
+  $('blueScore').textContent = s.world.score[0];
+  $('orangeScore').textContent = s.world.score[1];
+
+  const secs = Math.ceil(s.world.remaining/1000);
+  $('timeLeft').textContent =
+    String(Math.floor(secs/60)).padStart(2,'0') + ':' +
+    String(secs%60).padStart(2,'0');
+
+  const me = s.players.find(p => p.id === myId);
+  const stamina = me ? Math.max(0,Math.min(100,me.stamina)) : 100;
+
+  $('staminaBar').style.width = stamina + '%';
+  $('staminaBar').style.background =
+    stamina < 25 ? '#ff6969' : stamina < 50 ? '#f3ca57' : '#c9f06b';
+  $('staminaText').textContent = 'STAMINA ' + Math.round(stamina) + '%';
+
+  $('playersList').innerHTML = s.players.map(p =>
+    '<div style="color:'+(p.team===0?'#79bdff':p.team===1?'#ffb37a':'#ddd')+'">' +
+    (p.id===myId?'▶ ':'') + '#' + p.number + ' ' + esc(p.name) + ' ' +
+    (p.role?roleNames[p.role]:'Mevki seçmedi') + (p.hasBall?' ⚽':'') + '</div>'
+  ).join('');
+
+  drawPitch(s);
+}
+
+const keyMap = {
+  w:'up', ArrowUp:'up',
+  s:'down', ArrowDown:'down',
+  a:'left', ArrowLeft:'left',
+  d:'right', ArrowRight:'right'
+};
+
+window.addEventListener('keydown', e => {
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if(e.repeat && [' ','Shift'].includes(e.key)) return;
+  if(keyMap[e.key]) keys[keyMap[e.key]]=true;
+  if(e.key===' ') actionQueued='kick';
+  if(e.key==='Shift') actionQueued='pass';
 });
-setInterval(()=>{
- if(!ws||ws.readyState!==WebSocket.OPEN||!myId)return;
- if(Date.now()-lastSend<30)return;lastSend=Date.now();
- ws.send(JSON.stringify({type:'input',up:!!keys.up,down:!!keys.down,left:!!keys.left,right:!!keys.right,action:actionQueued}));
- actionQueued=null;
+
+window.addEventListener('keyup', e => {
+  if(keyMap[e.key]) keys[keyMap[e.key]]=false;
+});
+
+window.addEventListener('blur', () => { keys={}; });
+
+document.querySelectorAll('[data-key]').forEach(b => {
+  const k=b.dataset.key;
+  b.addEventListener('pointerdown',e => {
+    e.preventDefault();
+    if(['up','down','left','right'].includes(k)) keys[k]=true;
+    else if(k==='kick') actionQueued='kick';
+    else if(k==='pass') actionQueued='pass';
+    else if(k==='tackle') actionQueued='tackle';
+  });
+  const up=e => {
+    e.preventDefault();
+    if(['up','down','left','right'].includes(k)) keys[k]=false;
+  };
+  b.addEventListener('pointerup',up);
+  b.addEventListener('pointerleave',up);
+});
+
+setInterval(() => {
+  if(!ws || ws.readyState!==WebSocket.OPEN || !myId) return;
+  if(Date.now()-lastSend<30) return;
+  lastSend=Date.now();
+
+  ws.send(JSON.stringify({
+    type:'input',
+    up:!!keys.up,
+    down:!!keys.down,
+    left:!!keys.left,
+    right:!!keys.right,
+    action:actionQueued
+  }));
+
+  actionQueued=null;
 },30);
-try{const saved=JSON.parse(sessionStorage.getItem('mh_user')||'null');if(saved)setUser(saved);}catch{}
+
+setInterval(() => {
+  if (user && !$('dashboardView').classList.contains('hidden')) {
+    refreshOwnProfile();
+  }
+  if (state && state.world.goalEvent) {
+    showGoal(state.world.goalEvent);
+  }
+},500);
+
+try {
+  const saved=JSON.parse(sessionStorage.getItem('mh_user')||'null');
+  if(saved) setUser(saved);
+} catch {}
 })();
 </script>
 </body>
