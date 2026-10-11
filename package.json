@@ -1,7 +1,8 @@
 
 {
   "name": "mini-haxball",
-  "version": "2.0.0",
+  "version": "3.0.0",
+  "description": "Modern online 6v6 football game",
   "private": true,
   "main": "server.js",
   "scripts": {
