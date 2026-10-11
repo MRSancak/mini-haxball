@@ -10,36 +10,33 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'users.json');
+const DB = path.join(__dirname, 'users.json');
 
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {};
 try {
-  users = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+  users = JSON.parse(fs.readFileSync(DB, 'utf8'));
 } catch {}
 
 function saveUsers() {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2));
-  } catch (e) {
-    console.error('Kullanıcılar kaydedilemedi:', e.message);
-  }
+  fs.writeFileSync(DB, JSON.stringify(users, null, 2));
 }
 
 function hashPassword(password, salt) {
   return crypto.scryptSync(password, salt, 64).toString('hex');
 }
 
-function safeUser(username) {
+function publicUser(username) {
   const u = users[username];
-  return u ? {
+  return u && {
     username,
     displayName: u.displayName,
     number: u.number
-  } : null;
+  };
 }
 
 app.post('/api/register', (req, res) => {
@@ -58,23 +55,27 @@ app.post('/api/register', (req, res) => {
     return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı.' });
 
   if (!Number.isInteger(number) || number < 1 || number > 99)
-    return res.status(400).json({ error: 'Forma numarası 1-99 arasında olmalı.' });
+    return res.status(400).json({ error: 'Forma numarası 1-99 olmalı.' });
 
   if (users[username])
-    return res.status(409).json({ error: 'Bu kullanıcı adı alınmış.' });
+    return res.status(409).json({ error: 'Kullanıcı adı alınmış.' });
 
   const salt = crypto.randomBytes(16).toString('hex');
-
   users[username] = {
     displayName,
     number,
     salt,
-    passwordHash: hashPassword(password, salt),
-    createdAt: Date.now()
+    passwordHash: hashPassword(password, salt)
   };
 
-  saveUsers();
-  res.json({ user: safeUser(username) });
+  try {
+    saveUsers();
+  } catch {
+    delete users[username];
+    return res.status(500).json({ error: 'Hesap kaydedilemedi.' });
+  }
+
+  res.json({ user: publicUser(username) });
 });
 
 app.post('/api/login', (req, res) => {
@@ -85,13 +86,17 @@ app.post('/api/login', (req, res) => {
   if (!u || hashPassword(password, u.salt) !== u.passwordHash)
     return res.status(401).json({ error: 'Kullanıcı adı veya şifre yanlış.' });
 
-  res.json({ user: safeUser(username) });
+  res.json({ user: publicUser(username) });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ ok: true, players: players.size, game: 'Mini Haxball Pixel' });
 });
 
 const W = 1000;
 const H = 600;
-const MATCH_MS = 300000;
 const MAX_PLAYERS = 12;
+const MATCH_MS = 300000;
 
 const ROLE_CAP = { GK: 1, DEF: 2, MID: 1, FWD: 2 };
 const ROLE_NAME = {
@@ -103,11 +108,7 @@ const ROLE_NAME = {
 
 const players = new Map();
 
-let ball = {
-  x: W / 2, y: H / 2,
-  vx: 0, vy: 0, owner: null
-};
-
+let ball = { x: 500, y: 300, vx: 0, vy: 0, owner: null };
 let score = [0, 0];
 let matchStarted = Date.now();
 let lastGoal = 0;
@@ -122,25 +123,14 @@ function send(ws, data) {
     ws.send(JSON.stringify(data));
 }
 
-function broadcast() {
-  const data = JSON.stringify(snapshot());
-
-  for (const p of players.values()) {
-    if (p.ws.readyState === WebSocket.OPEN)
-      p.ws.send(data);
-  }
-}
-
 function snapshot() {
-  const now = Date.now();
-
   return {
     type: 'state',
     world: {
       w: W,
       h: H,
       score,
-      remaining: Math.max(0, MATCH_MS - (now - matchStarted)),
+      remaining: Math.max(0, MATCH_MS - (Date.now() - matchStarted)),
       matchId
     },
     ball: { ...ball },
@@ -155,57 +145,36 @@ function snapshot() {
       y: p.y,
       vx: p.vx,
       vy: p.vy,
-      hasBall: ball.owner === p.id,
-      dashReady: now >= p.dashUntil,
-      tackleReady: now >= p.tackleUntil
+      facingX: p.facingX,
+      facingY: p.facingY,
+      stamina: p.stamina,
+      hasBall: ball.owner === p.id
     }))
   };
 }
 
-function resetBall() {
-  ball = {
-    x: W / 2, y: H / 2,
-    vx: 0, vy: 0, owner: null
-  };
-}
-
-function roleCounts(team, role) {
-  let count = 0;
-
+function broadcast() {
+  const data = JSON.stringify(snapshot());
   for (const p of players.values()) {
-    if (p.team === team && p.role === role)
-      count++;
+    if (p.ws.readyState === WebSocket.OPEN)
+      p.ws.send(data);
   }
-
-  return count;
 }
 
-function assignPlayer(p, team, role) {
-  if (![0, 1].includes(team)) return false;
-  if (!ROLE_CAP[role]) return false;
-  if (roleCounts(team, role) >= ROLE_CAP[role]) return false;
-
-  p.team = team;
-  p.role = role;
-  p.slot = roleCounts(team, role) - 1;
-
-  resetPositions();
-  return true;
+function resetBall() {
+  ball = { x: 500, y: 300, vx: 0, vy: 0, owner: null };
 }
 
 function resetPositions() {
   for (const p of players.values()) {
-    const x = p.team === 0 ? 250 : 750;
-
     const positions = {
-      GK: [p.team === 0 ? 55 : 945, 300],
-      DEF: [p.team === 0 ? 250 : 750, p.slot === 0 ? 210 : 390],
+      GK: [p.team === 0 ? 65 : 935, 300],
+      DEF: [p.team === 0 ? 245 : 755, p.slot === 0 ? 215 : 385],
       MID: [p.team === 0 ? 420 : 580, 300],
-      FWD: [p.team === 0 ? 470 : 530, p.slot === 0 ? 220 : 380]
+      FWD: [p.team === 0 ? 460 : 540, p.slot === 0 ? 220 : 380]
     };
 
-    const pos = positions[p.role] || [x, 300];
-
+    const pos = positions[p.role] || [500, 300];
     p.x = pos[0];
     p.y = pos[1];
     p.vx = 0;
@@ -215,12 +184,38 @@ function resetPositions() {
   resetBall();
 }
 
+function roleCounts(team, role) {
+  return [...players.values()].filter(
+    p => p.team === team && p.role === role
+  ).length;
+}
+
+function assignPlayer(p, team, role) {
+  if (![0, 1].includes(team) || !ROLE_CAP[role]) return false;
+
+  // Kendi seçimini tekrar yapmasına izin ver.
+  const previousTeam = p.team;
+  const previousRole = p.role;
+
+  p.team = null;
+  p.role = null;
+
+  if (roleCounts(team, role) >= ROLE_CAP[role]) {
+    p.team = previousTeam;
+    p.role = previousRole;
+    return false;
+  }
+
+  p.team = team;
+  p.role = role;
+  p.slot = roleCounts(team, role) - 1;
+  resetPositions();
+  return true;
+}
+
 function removePlayer(p) {
   if (!p) return;
-
-  if (ball.owner === p.id)
-    ball.owner = null;
-
+  if (ball.owner === p.id) ball.owner = null;
   players.delete(p.id);
   broadcast();
 }
@@ -231,11 +226,14 @@ function joinGame(ws, username) {
     return null;
   }
 
-  const u = users[username];
-  const id = crypto.randomUUID();
+  if ([...players.values()].some(p => p.username === username)) {
+    send(ws, { type: 'error', message: 'Bu hesap zaten oyunda.' });
+    return null;
+  }
 
+  const u = users[username];
   const p = {
-    id,
+    id: crypto.randomUUID(),
     ws,
     username,
     name: u.displayName,
@@ -243,46 +241,72 @@ function joinGame(ws, username) {
     team: null,
     role: null,
     slot: 0,
-    x: W / 2,
-    y: H / 2,
+    x: 500,
+    y: 300,
     vx: 0,
     vy: 0,
-    input: {
-      up: false, down: false,
-      left: false, right: false
-    },
-    dashUntil: 0,
+    facingX: 1,
+    facingY: 0,
+    stamina: 100,
+    input: { up: false, down: false, left: false, right: false },
     tackleUntil: 0,
     lastKick: 0
   };
 
-  players.set(id, p);
-
-  send(ws, {
-    type: 'joined',
-    id,
-    user: safeUser(username),
-    maxPlayers: MAX_PLAYERS
-  });
-
+  players.set(p.id, p);
+  send(ws, { type: 'joined', id: p.id, user: publicUser(username) });
   broadcast();
   return p;
 }
 
-app.get('/health', (req, res) => {
-  res.json({
-    ok: true,
-    players: players.size,
-    game: 'Mini Haxball Pixel'
-  });
-});
+function attemptKick(p, action) {
+  const now = Date.now();
+  if (ball.owner !== p.id || now - p.lastKick < 250) return;
+
+  let dx = Number(p.input.right) - Number(p.input.left);
+  let dy = Number(p.input.down) - Number(p.input.up);
+
+  // Dururken son baktığı yöne pas/şut at.
+  if (!dx && !dy) {
+    dx = p.facingX;
+    dy = p.facingY;
+  }
+
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len;
+  dy /= len;
+
+  const power = action === 'pass' ? 7.2 : 11.8;
+
+  ball.owner = null;
+  ball.x = p.x + dx * 22;
+  ball.y = p.y + dy * 22;
+  ball.vx = dx * power;
+  ball.vy = dy * power;
+  p.lastKick = now;
+}
+
+function attemptTackle(p) {
+  const now = Date.now();
+  if (now < p.tackleUntil) return;
+  p.tackleUntil = now + 450;
+
+  if (ball.owner) {
+    const target = players.get(ball.owner);
+    if (target && target.team !== p.team && dist(p, target) < 42)
+      ball.owner = p.id;
+  } else if (dist(p, ball) < 37) {
+    ball.owner = p.id;
+    ball.vx = 0;
+    ball.vy = 0;
+  }
+}
 
 wss.on('connection', ws => {
   let player = null;
 
   ws.on('message', raw => {
     let msg;
-
     try {
       msg = JSON.parse(raw.toString());
     } catch {
@@ -292,13 +316,8 @@ wss.on('connection', ws => {
     if (msg.type === 'auth') {
       const username = String(msg.username || '').trim().toLowerCase();
 
-      // Bu temel sürümde oturum belirteci istemci tarafında oluşturulur.
-      // Herkese açık yayında gerçek sunucu oturumlarıyla değiştirilmelidir.
       if (!users[username] || msg.token !== 'pixel:' + username) {
-        send(ws, {
-          type: 'error',
-          message: 'Oturum doğrulanamadı. Yeniden giriş yap.'
-        });
+        send(ws, { type: 'error', message: 'Oturum doğrulanamadı. Yeniden giriş yap.' });
         return;
       }
 
@@ -310,22 +329,16 @@ wss.on('connection', ws => {
     if (!player) return;
 
     if (msg.type === 'select') {
-      const team = Number(msg.team);
-      const role = String(msg.role || '');
-
-      if (!assignPlayer(player, team, role)) {
-        send(ws, {
-          type: 'error',
-          message: 'Bu takımda bu mevki dolu veya seçim geçersiz.'
-        });
+      if (!assignPlayer(player, Number(msg.team), String(msg.role || ''))) {
+        send(ws, { type: 'error', message: 'Mevki dolu veya seçim geçersiz.' });
         return;
       }
 
       send(ws, {
         type: 'selected',
-        team,
-        role,
-        roleName: ROLE_NAME[role]
+        team: player.team,
+        role: player.role,
+        roleName: ROLE_NAME[player.role]
       });
 
       broadcast();
@@ -337,66 +350,22 @@ wss.on('connection', ws => {
     for (const k of ['up', 'down', 'left', 'right'])
       player.input[k] = !!msg[k];
 
-    const now = Date.now();
+    let dx = Number(player.input.right) - Number(player.input.left);
+    let dy = Number(player.input.down) - Number(player.input.up);
 
-    if (msg.dash && now >= player.dashUntil) {
-      let dx = Number(player.input.right) - Number(player.input.left);
-      let dy = Number(player.input.down) - Number(player.input.up);
-      const len = Math.hypot(dx, dy) || 1;
-
-      if (!dx && !dy)
-        dx = player.team === 0 ? 1 : -1;
-
-      const actualLen = Math.hypot(dx, dy) || 1;
-
-      player.vx += dx / actualLen * 7.4;
-      player.vy += dy / actualLen * 7.4;
-      player.dashUntil = now + 2000;
+    if (dx || dy) {
+      const len = Math.hypot(dx, dy);
+      player.facingX = dx / len;
+      player.facingY = dy / len;
     }
 
-    if (msg.action === 'kick' || msg.action === 'pass') {
-      if (ball.owner !== player.id || now - player.lastKick < 280)
-        return;
-
-      let dx = Number(player.input.right) - Number(player.input.left);
-      let dy = Number(player.input.down) - Number(player.input.up);
-
-      if (!dx && !dy) {
-        dx = player.team === 0 ? 1 : -1;
-        dy = 0;
-      }
-
-      const len = Math.hypot(dx, dy) || 1;
-      const power = msg.action === 'pass' ? 7.2 : 11.8;
-
-      ball.owner = null;
-      ball.x = player.x + dx / len * 22;
-      ball.y = player.y + dy / len * 22;
-      ball.vx = dx / len * power;
-      ball.vy = dy / len * power;
-
-      player.lastKick = now;
-    }
-
-    if (msg.action === 'tackle' &&
-        ball.owner !== player.id &&
-        now >= player.tackleUntil) {
-
-      player.tackleUntil = now + 450;
-
-      if (ball.owner) {
-        const target = players.get(ball.owner);
-
-        if (target &&
-            target.team !== player.team &&
-            dist(player, target) < 42) {
-          ball.owner = player.id;
-        }
-      } else if (dist(player, ball) < 37) {
-        ball.owner = player.id;
-        ball.vx = 0;
-        ball.vy = 0;
-      }
+    if (msg.action === 'kick') {
+      if (ball.owner === player.id) attemptKick(player, 'shot');
+      else attemptTackle(player);
+    } else if (msg.action === 'pass') {
+      attemptKick(player, 'pass');
+    } else if (msg.action === 'tackle') {
+      attemptTackle(player);
     }
   });
 
@@ -429,18 +398,25 @@ setInterval(() => {
     if (dx || dy) {
       dx /= len;
       dy /= len;
+      p.facingX = dx;
+      p.facingY = dy;
+      p.stamina = Math.max(0, p.stamina - (10 * dt / 60));
+    } else {
+      p.stamina = Math.min(100, p.stamina + (18 * dt / 60));
     }
 
-    const speed = p.role === 'GK' ? 2.7 : 3.15;
+    const baseSpeed = (p.role === 'GK' ? 2.7 : 3.15) * 1.10;
+    const speed = baseSpeed * (p.stamina <= 0 ? 0.25 : 1);
 
     p.vx += dx * speed * 0.22 * dt;
     p.vy += dy * speed * 0.22 * dt;
 
     const velocity = Math.hypot(p.vx, p.vy);
+    const maxVelocity = speed * 1.8;
 
-    if (velocity > 5.6) {
-      p.vx = p.vx / velocity * 5.6;
-      p.vy = p.vy / velocity * 5.6;
+    if (velocity > maxVelocity) {
+      p.vx = p.vx / velocity * maxVelocity;
+      p.vy = p.vy / velocity * maxVelocity;
     }
 
     p.x = clamp(p.x + p.vx * dt, 24, W - 24);
@@ -452,17 +428,15 @@ setInterval(() => {
 
   const list = [...players.values()].filter(p => p.team !== null);
 
+  // Oyuncuların birbirinin içine girmesini azalt.
   for (let i = 0; i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
-      const a = list[i];
-      const b = list[j];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
+      const a = list[i], b = list[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy);
 
       if (d > 0 && d < 25) {
         const push = (25 - d) * 0.22;
-
         a.x -= dx / d * push;
         a.y -= dy / d * push;
         b.x += dx / d * push;
@@ -477,44 +451,55 @@ setInterval(() => {
     if (!p) {
       ball.owner = null;
     } else {
-      let dx = Number(p.input.right) - Number(p.input.left);
-      let dy = Number(p.input.down) - Number(p.input.up);
-      const len = Math.hypot(dx, dy) || 1;
-
-      ball.x = p.x + dx / len * 20;
-      ball.y = p.y + dy / len * 20;
-      ball.vx = p.vx;
-      ball.vy = p.vy;
+      ball.x = p.x + p.facingX * 20;
+      ball.y = p.y + p.facingY * 20;
+      ball.vx = 0;
+      ball.vy = 0;
     }
   } else {
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
-
     ball.vx *= Math.pow(0.985, dt);
     ball.vy *= Math.pow(0.985, dt);
 
+    // Üst ve alt saha çizgileri.
     if (ball.y < 18 || ball.y > H - 18) {
       ball.y = clamp(ball.y, 18, H - 18);
       ball.vy *= -0.78;
     }
 
-    if (ball.x < 16 || ball.x > W - 16) {
-      if (ball.y > 235 && ball.y < 365 && now - lastGoal > 1200) {
-        score[ball.x < 16 ? 1 : 0]++;
+    // Kale açıklığı: direklerin iç tarafı ve üst çıtanın altı.
+    const inGoalMouth = ball.y > 263 && ball.y < 337;
+
+    if (ball.x <= 18) {
+      if (inGoalMouth && now - lastGoal > 1200) {
+        score[1]++;
         lastGoal = now;
         resetPositions();
       } else {
-        ball.x = clamp(ball.x, 16, W - 16);
-        ball.vx *= -0.78;
+        ball.x = 18;
+        ball.vx = Math.abs(ball.vx) * 0.78;
+      }
+    } else if (ball.x >= W - 18) {
+      if (inGoalMouth && now - lastGoal > 1200) {
+        score[0]++;
+        lastGoal = now;
+        resetPositions();
+      } else {
+        ball.x = W - 18;
+        ball.vx = -Math.abs(ball.vx) * 0.78;
       }
     }
 
-    for (const p of list) {
-      if (dist(p, ball) < 23) {
-        ball.owner = p.id;
-        ball.vx = 0;
-        ball.vy = 0;
-        break;
+    // Topa yakın oyuncu topu kontrol edebilir.
+    if (!ball.owner) {
+      for (const p of list) {
+        if (dist(p, ball) < 23) {
+          ball.owner = p.id;
+          ball.vx = 0;
+          ball.vy = 0;
+          break;
+        }
       }
     }
   }
@@ -523,5 +508,5 @@ setInterval(() => {
 }, 1000 / 30);
 
 server.listen(PORT, () => {
-  console.log(`Mini Haxball Pixel running on port ${PORT}`);
+  console.log(`Mini Haxball Pixel çalışıyor: ${PORT}`);
 });
