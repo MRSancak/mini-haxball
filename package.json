@@ -1,6 +1,6 @@
 {
   "name": "mini-haxball-pixel",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Pixel-art 6v6 browser football game",
   "main": "server.js",
   "scripts": {
