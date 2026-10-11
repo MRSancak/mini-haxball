@@ -12,31 +12,95 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
-const DB = path.join(__dirname, 'users.json');
+const DB_PATH = path.join(__dirname, 'users.json');
+
+const W = 1000;
+const H = 600;
+const MATCH_MS = 300000;
+const MAX_PLAYERS = 12;
+const GOAL_CELEBRATION_MS = 5000;
+
+const ROLE_CAP = { DEF: 2, MID: 3, FWD: 1 };
+const ROLE_NAMES = {
+  DEF: 'Defans',
+  MID: 'Orta saha',
+  FWD: 'Forvet'
+};
 
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {};
+
 try {
-  users = JSON.parse(fs.readFileSync(DB, 'utf8'));
-} catch {}
+  users = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+} catch {
+  users = {};
+}
 
 function saveUsers() {
-  fs.writeFileSync(DB, JSON.stringify(users, null, 2));
+  const temp = DB_PATH + '.tmp';
+  fs.writeFileSync(temp, JSON.stringify(users, null, 2));
+  fs.renameSync(temp, DB_PATH);
 }
 
 function hashPassword(password, salt) {
   return crypto.scryptSync(password, salt, 64).toString('hex');
 }
 
+function passwordMatches(password, user) {
+  if (!user || !user.salt || !user.passwordHash) return false;
+
+  const a = Buffer.from(hashPassword(password, user.salt), 'hex');
+  const b = Buffer.from(user.passwordHash, 'hex');
+
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function publicUser(username) {
   const u = users[username];
-  return u && {
+  if (!u) return null;
+
+  const roleEntries = Object.entries(u.stats.roles || {});
+  roleEntries.sort((a, b) => b[1] - a[1]);
+
+  return {
     username,
     displayName: u.displayName,
-    number: u.number
+    number: u.number,
+    stats: {
+      matches: u.stats.matches || 0,
+      goals: u.stats.goals || 0,
+      assists: u.stats.assists || 0,
+      roles: u.stats.roles || {},
+      mostPlayedRole: roleEntries.length
+        ? ROLE_NAMES[roleEntries[0][0]]
+        : 'Henüz yok'
+    }
   };
+}
+
+function ensureStats(u) {
+  if (!u.stats) {
+    u.stats = { matches: 0, goals: 0, assists: 0, roles: {} };
+  }
+
+  u.stats.matches ||= 0;
+  u.stats.goals ||= 0;
+  u.stats.assists ||= 0;
+  u.stats.roles ||= {};
+
+  for (const role of Object.keys(ROLE_CAP)) {
+    u.stats.roles[role] ||= 0;
+  }
+}
+
+for (const u of Object.values(users)) ensureStats(u);
+
+try {
+  saveUsers();
+} catch (e) {
+  console.error('Kullanıcı veritabanı kaydedilemedi:', e.message);
 }
 
 app.post('/api/register', (req, res) => {
@@ -45,27 +109,47 @@ app.post('/api/register', (req, res) => {
   const password = String(req.body.password || '');
   const number = Number(req.body.number);
 
-  if (!/^[a-z0-9_]{3,18}$/.test(username))
-    return res.status(400).json({ error: 'Kullanıcı adı 3-18 karakter olmalı.' });
+  if (!/^[a-z0-9_]{3,18}$/.test(username)) {
+    return res.status(400).json({
+      error: 'Kullanıcı adı 3-18 karakter olmalı; harf, sayı ve _ kullanılabilir.'
+    });
+  }
 
-  if (displayName.length < 2 || displayName.length > 18)
-    return res.status(400).json({ error: 'Görünen isim 2-18 karakter olmalı.' });
+  if (displayName.length < 2 || displayName.length > 18) {
+    return res.status(400).json({
+      error: 'Görünen isim 2-18 karakter olmalı.'
+    });
+  }
 
-  if (password.length < 6 || password.length > 100)
-    return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı.' });
+  if (password.length < 6 || password.length > 100) {
+    return res.status(400).json({
+      error: 'Şifre 6-100 karakter arasında olmalı.'
+    });
+  }
 
-  if (!Number.isInteger(number) || number < 1 || number > 99)
-    return res.status(400).json({ error: 'Forma numarası 1-99 olmalı.' });
+  if (!Number.isInteger(number) || number < 1 || number > 99) {
+    return res.status(400).json({
+      error: 'Forma numarası 1-99 arasında olmalı.'
+    });
+  }
 
-  if (users[username])
-    return res.status(409).json({ error: 'Kullanıcı adı alınmış.' });
+  if (users[username]) {
+    return res.status(409).json({ error: 'Bu kullanıcı adı alınmış.' });
+  }
 
   const salt = crypto.randomBytes(16).toString('hex');
+
   users[username] = {
     displayName,
     number,
     salt,
-    passwordHash: hashPassword(password, salt)
+    passwordHash: hashPassword(password, salt),
+    stats: {
+      matches: 0,
+      goals: 0,
+      assists: 0,
+      roles: { DEF: 0, MID: 0, FWD: 0 }
+    }
   };
 
   try {
@@ -81,46 +165,72 @@ app.post('/api/register', (req, res) => {
 app.post('/api/login', (req, res) => {
   const username = String(req.body.username || '').trim().toLowerCase();
   const password = String(req.body.password || '');
-  const u = users[username];
 
-  if (!u || hashPassword(password, u.salt) !== u.passwordHash)
-    return res.status(401).json({ error: 'Kullanıcı adı veya şifre yanlış.' });
+  if (!passwordMatches(password, users[username])) {
+    return res.status(401).json({
+      error: 'Kullanıcı adı veya şifre yanlış.'
+    });
+  }
 
   res.json({ user: publicUser(username) });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ ok: true, players: players.size, game: 'Mini Haxball Pixel' });
+app.get('/api/profile/:username', (req, res) => {
+  const username = String(req.params.username || '').trim().toLowerCase();
+  const profile = publicUser(username);
+
+  if (!profile) {
+    return res.status(404).json({ error: 'Bu kullanıcı bulunamadı.' });
+  }
+
+  res.json({ user: profile });
 });
 
-const W = 1000;
-const H = 600;
-const MAX_PLAYERS = 12;
-const MATCH_MS = 300000;
-
-const ROLE_CAP = { GK: 1, DEF: 2, MID: 1, FWD: 2 };
-const ROLE_NAME = {
-  GK: 'Kaleci',
-  DEF: 'Defans',
-  MID: 'Orta saha',
-  FWD: 'Forvet'
-};
+app.get('/health', (req, res) => {
+  res.json({
+    ok: true,
+    players: players.size,
+    game: 'Mini Haxball Pixel'
+  });
+});
 
 const players = new Map();
 
-let ball = { x: 500, y: 300, vx: 0, vy: 0, owner: null };
+let ball = {
+  x: W / 2,
+  y: H / 2,
+  vx: 0,
+  vy: 0,
+  owner: null,
+  lastTouch: null,
+  assistCandidate: null
+};
+
 let score = [0, 0];
 let matchStarted = Date.now();
 let lastGoal = 0;
 let matchId = 1;
 let lastTick = Date.now();
+let goalEvent = null;
+let goalResetAt = 0;
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 function send(ws, data) {
-  if (ws.readyState === WebSocket.OPEN)
+  if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
+  }
+}
+
+function broadcast() {
+  const message = JSON.stringify(snapshot());
+
+  for (const p of players.values()) {
+    if (p.ws.readyState === WebSocket.OPEN) {
+      p.ws.send(message);
+    }
+  }
 }
 
 function snapshot() {
@@ -131,7 +241,8 @@ function snapshot() {
       h: H,
       score,
       remaining: Math.max(0, MATCH_MS - (Date.now() - matchStarted)),
-      matchId
+      matchId,
+      goalEvent
     },
     ball: { ...ball },
     players: [...players.values()].map(p => ({
@@ -153,69 +264,100 @@ function snapshot() {
   };
 }
 
-function broadcast() {
-  const data = JSON.stringify(snapshot());
-  for (const p of players.values()) {
-    if (p.ws.readyState === WebSocket.OPEN)
-      p.ws.send(data);
+function saveStatsSafely() {
+  try {
+    saveUsers();
+  } catch (e) {
+    console.error('İstatistik kaydedilemedi:', e.message);
   }
 }
 
+function updateStats(username, field, amount = 1) {
+  const u = users[username];
+  if (!u) return;
+
+  ensureStats(u);
+  u.stats[field] = (u.stats[field] || 0) + amount;
+}
+
 function resetBall() {
-  ball = { x: 500, y: 300, vx: 0, vy: 0, owner: null };
+  ball = {
+    x: W / 2,
+    y: H / 2,
+    vx: 0,
+    vy: 0,
+    owner: null,
+    lastTouch: null,
+    assistCandidate: null
+  };
 }
 
 function resetPositions() {
   for (const p of players.values()) {
-    const positions = {
-      GK: [p.team === 0 ? 65 : 935, 300],
-      DEF: [p.team === 0 ? 245 : 755, p.slot === 0 ? 215 : 385],
-      MID: [p.team === 0 ? 420 : 580, 300],
-      FWD: [p.team === 0 ? 460 : 540, p.slot === 0 ? 220 : 380]
-    };
+    if (p.team === null || !p.role) {
+      p.x = W / 2;
+      p.y = H / 2;
+      p.vx = 0;
+      p.vy = 0;
+      continue;
+    }
 
-    const pos = positions[p.role] || [500, 300];
-    p.x = pos[0];
-    p.y = pos[1];
+    const left = p.team === 0;
+    const row = p.slot % 2 === 0 ? 220 : 380;
+
+    if (p.role === 'DEF') {
+      p.x = left ? 220 : 780;
+      p.y = row;
+    } else if (p.role === 'MID') {
+      p.x = left ? 365 : 635;
+      p.y = 150 + p.slot * 75;
+    } else {
+      p.x = left ? 445 : 555;
+      p.y = 300;
+    }
+
     p.vx = 0;
     p.vy = 0;
+    p.facingX = left ? 1 : -1;
+    p.facingY = 0;
   }
 
   resetBall();
 }
 
-function roleCounts(team, role) {
+function roleCounts(team, role, exceptId = null) {
   return [...players.values()].filter(
-    p => p.team === team && p.role === role
+    p => p.id !== exceptId && p.team === team && p.role === role
   ).length;
 }
 
 function assignPlayer(p, team, role) {
   if (![0, 1].includes(team) || !ROLE_CAP[role]) return false;
 
-  // Kendi seçimini tekrar yapmasına izin ver.
-  const previousTeam = p.team;
-  const previousRole = p.role;
-
-  p.team = null;
-  p.role = null;
-
-  if (roleCounts(team, role) >= ROLE_CAP[role]) {
-    p.team = previousTeam;
-    p.role = previousRole;
-    return false;
-  }
+  if (roleCounts(team, role, p.id) >= ROLE_CAP[role]) return false;
 
   p.team = team;
   p.role = role;
-  p.slot = roleCounts(team, role) - 1;
+  p.slot = roleCounts(team, role, p.id);
+
+  ensureStats(users[p.username]);
+  users[p.username].stats.roles[role] =
+    (users[p.username].stats.roles[role] || 0) + 1;
+
+  saveStatsSafely();
   resetPositions();
+
   return true;
 }
 
 function removePlayer(p) {
   if (!p) return;
-  if (ball.owner === p.id) ball.owner = null;
+
+  if (ball.owner === p.id) {
+    ball.owner = null;
+    ball.lastTouch = p.id;
+  }
+
   players.delete(p.id);
   broadcast();
 }
@@ -232,6 +374,8 @@ function joinGame(ws, username) {
   }
 
   const u = users[username];
+  if (!u) return null;
+
   const p = {
     id: crypto.randomUUID(),
     ws,
@@ -241,8 +385,8 @@ function joinGame(ws, username) {
     team: null,
     role: null,
     slot: 0,
-    x: 500,
-    y: 300,
+    x: W / 2,
+    y: H / 2,
     vx: 0,
     vy: 0,
     facingX: 1,
@@ -250,23 +394,60 @@ function joinGame(ws, username) {
     stamina: 100,
     input: { up: false, down: false, left: false, right: false },
     tackleUntil: 0,
-    lastKick: 0
+    lastKick: 0,
+    matchRecorded: false
   };
 
   players.set(p.id, p);
-  send(ws, { type: 'joined', id: p.id, user: publicUser(username) });
+
+  send(ws, {
+    type: 'joined',
+    id: p.id,
+    user: publicUser(username)
+  });
+
   broadcast();
   return p;
 }
 
-function attemptKick(p, action) {
+function attemptTackle(p) {
   const now = Date.now();
-  if (ball.owner !== p.id || now - p.lastKick < 250) return;
+
+  if (now < p.tackleUntil || goalEvent) return;
+
+  p.tackleUntil = now + 450;
+
+  if (ball.owner) {
+    const target = players.get(ball.owner);
+
+    if (
+      target &&
+      target.team !== p.team &&
+      dist(p, target) < 42
+    ) {
+      ball.owner = p.id;
+      ball.lastTouch = p.id;
+      ball.assistCandidate = null;
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+  } else if (dist(p, ball) < 37) {
+    ball.owner = p.id;
+    ball.lastTouch = p.id;
+    ball.assistCandidate = null;
+    ball.vx = 0;
+    ball.vy = 0;
+  }
+}
+
+function attemptKick(p, action) {
+  if (goalEvent || ball.owner !== p.id || Date.now() - p.lastKick < 250) {
+    return;
+  }
 
   let dx = Number(p.input.right) - Number(p.input.left);
   let dy = Number(p.input.down) - Number(p.input.up);
 
-  // Dururken son baktığı yöne pas/şut at.
   if (!dx && !dy) {
     dx = p.facingX;
     dy = p.facingY;
@@ -276,30 +457,94 @@ function attemptKick(p, action) {
   dx /= len;
   dy /= len;
 
-  const power = action === 'pass' ? 7.2 : 11.8;
+  const previousTouch = ball.lastTouch
+    ? players.get(ball.lastTouch)
+    : null;
+
+  if (action === 'pass') {
+    ball.assistCandidate =
+      previousTouch &&
+      previousTouch.id !== p.id &&
+      previousTouch.team === p.team
+        ? previousTouch.id
+        : null;
+  } else {
+    // Şut atan oyuncu, golün sahibi olarak kaydedilir.
+    ball.assistCandidate =
+      ball.assistCandidate &&
+      ball.assistCandidate !== p.id
+        ? ball.assistCandidate
+        : null;
+  }
 
   ball.owner = null;
+  ball.lastTouch = p.id;
   ball.x = p.x + dx * 22;
   ball.y = p.y + dy * 22;
-  ball.vx = dx * power;
-  ball.vy = dy * power;
-  p.lastKick = now;
+  ball.vx = dx * (action === 'pass' ? 7.2 : 11.8);
+  ball.vy = dy * (action === 'pass' ? 7.2 : 11.8);
+  p.lastKick = Date.now();
 }
 
-function attemptTackle(p) {
-  const now = Date.now();
-  if (now < p.tackleUntil) return;
-  p.tackleUntil = now + 450;
+function scoreGoal(teamScored) {
+  if (goalEvent) return;
 
-  if (ball.owner) {
-    const target = players.get(ball.owner);
-    if (target && target.team !== p.team && dist(p, target) < 42)
-      ball.owner = p.id;
-  } else if (dist(p, ball) < 37) {
-    ball.owner = p.id;
-    ball.vx = 0;
-    ball.vy = 0;
+  const scorer = ball.lastTouch ? players.get(ball.lastTouch) : null;
+  let assist = ball.assistCandidate ? players.get(ball.assistCandidate) : null;
+
+  if (
+    !assist ||
+    !scorer ||
+    assist.id === scorer.id ||
+    assist.team !== scorer.team
+  ) {
+    assist = null;
   }
+
+  score[teamScored]++;
+
+  if (scorer && scorer.team === teamScored) {
+    updateStats(scorer.username, 'goals');
+  }
+
+  if (assist && scorer && assist.team === scorer.team) {
+    updateStats(assist.username, 'assists');
+  }
+
+  saveStatsSafely();
+
+  goalEvent = {
+    team: teamScored,
+    scorer: scorer
+      ? { username: scorer.username, name: scorer.name, number: scorer.number }
+      : null,
+    assist: assist
+      ? { username: assist.username, name: assist.name, number: assist.number }
+      : null,
+    expiresAt: Date.now() + GOAL_CELEBRATION_MS
+  };
+
+  goalResetAt = goalEvent.expiresAt;
+  lastGoal = Date.now();
+
+  for (const p of players.values()) {
+    p.input = { up: false, down: false, left: false, right: false };
+    p.vx = 0;
+    p.vy = 0;
+  }
+
+  broadcast();
+}
+
+function recordMatch() {
+  for (const p of players.values()) {
+    if (p.matchRecorded || p.team === null || !p.role) continue;
+
+    updateStats(p.username, 'matches');
+    p.matchRecorded = true;
+  }
+
+  saveStatsSafely();
 }
 
 wss.on('connection', ws => {
@@ -307,6 +552,7 @@ wss.on('connection', ws => {
 
   ws.on('message', raw => {
     let msg;
+
     try {
       msg = JSON.parse(raw.toString());
     } catch {
@@ -316,6 +562,8 @@ wss.on('connection', ws => {
     if (msg.type === 'auth') {
       const username = String(msg.username || '').trim().toLowerCase();
 
+      // Bu basit token, prototip içindir; gerçek yayın öncesinde
+      // güvenli sunucu oturumlarıyla değiştirilmelidir.
       if (!users[username] || msg.token !== 'pixel:' + username) {
         send(ws, { type: 'error', message: 'Oturum doğrulanamadı. Yeniden giriş yap.' });
         return;
@@ -329,8 +577,14 @@ wss.on('connection', ws => {
     if (!player) return;
 
     if (msg.type === 'select') {
-      if (!assignPlayer(player, Number(msg.team), String(msg.role || ''))) {
-        send(ws, { type: 'error', message: 'Mevki dolu veya seçim geçersiz.' });
+      const ok = assignPlayer(
+        player,
+        Number(msg.team),
+        String(msg.role || '')
+      );
+
+      if (!ok) {
+        send(ws, { type: 'error', message: 'Bu mevki dolu veya seçim geçersiz.' });
         return;
       }
 
@@ -338,7 +592,7 @@ wss.on('connection', ws => {
         type: 'selected',
         team: player.team,
         role: player.role,
-        roleName: ROLE_NAME[player.role]
+        roleName: ROLE_NAMES[player.role]
       });
 
       broadcast();
@@ -347,8 +601,9 @@ wss.on('connection', ws => {
 
     if (msg.type !== 'input') return;
 
-    for (const k of ['up', 'down', 'left', 'right'])
-      player.input[k] = !!msg[k];
+    for (const key of ['up', 'down', 'left', 'right']) {
+      player.input[key] = !!msg[key];
+    }
 
     let dx = Number(player.input.right) - Number(player.input.left);
     let dy = Number(player.input.down) - Number(player.input.up);
@@ -358,6 +613,8 @@ wss.on('connection', ws => {
       player.facingX = dx / len;
       player.facingY = dy / len;
     }
+
+    if (goalEvent) return;
 
     if (msg.action === 'kick') {
       if (ball.owner === player.id) attemptKick(player, 'shot');
@@ -378,14 +635,23 @@ setInterval(() => {
   const dt = Math.min((now - lastTick) / 16.6667, 2);
   lastTick = now;
 
-  if (now - matchStarted >= MATCH_MS) {
-    if (now - matchStarted >= MATCH_MS + 3500) {
-      score = [0, 0];
-      matchStarted = now;
-      matchId++;
+  if (goalEvent) {
+    if (now >= goalResetAt) {
+      goalEvent = null;
       resetPositions();
       broadcast();
     }
+    return;
+  }
+
+  if (now - matchStarted >= MATCH_MS) {
+    recordMatch();
+    score = [0, 0];
+    matchStarted = now;
+    matchId++;
+    for (const p of players.values()) p.matchRecorded = false;
+    resetPositions();
+    broadcast();
   }
 
   for (const p of players.values()) {
@@ -400,12 +666,14 @@ setInterval(() => {
       dy /= len;
       p.facingX = dx;
       p.facingY = dy;
-      p.stamina = Math.max(0, p.stamina - (10 * dt / 60));
+
+      // Tam hareket halinde yaklaşık 10 saniyede tükenir.
+      p.stamina = Math.max(0, p.stamina - (100 * dt / (10 * 60)));
     } else {
       p.stamina = Math.min(100, p.stamina + (18 * dt / 60));
     }
 
-    const baseSpeed = (p.role === 'GK' ? 2.7 : 3.15) * 1.10;
+    const baseSpeed = 3.15 * 1.10;
     const speed = baseSpeed * (p.stamina <= 0 ? 0.25 : 1);
 
     p.vx += dx * speed * 0.22 * dt;
@@ -426,13 +694,14 @@ setInterval(() => {
     p.vy *= Math.pow(0.78, dt);
   }
 
-  const list = [...players.values()].filter(p => p.team !== null);
+  const active = [...players.values()].filter(p => p.team !== null);
 
-  // Oyuncuların birbirinin içine girmesini azalt.
-  for (let i = 0; i < list.length; i++) {
-    for (let j = i + 1; j < list.length; j++) {
-      const a = list[i], b = list[j];
-      const dx = b.x - a.x, dy = b.y - a.y;
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i];
+      const b = active[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
       const d = Math.hypot(dx, dy);
 
       if (d > 0 && d < 25) {
@@ -462,40 +731,34 @@ setInterval(() => {
     ball.vx *= Math.pow(0.985, dt);
     ball.vy *= Math.pow(0.985, dt);
 
-    // Üst ve alt saha çizgileri.
     if (ball.y < 18 || ball.y > H - 18) {
       ball.y = clamp(ball.y, 18, H - 18);
       ball.vy *= -0.78;
     }
 
-    // Kale açıklığı: direklerin iç tarafı ve üst çıtanın altı.
     const inGoalMouth = ball.y > 263 && ball.y < 337;
 
     if (ball.x <= 18) {
       if (inGoalMouth && now - lastGoal > 1200) {
-        score[1]++;
-        lastGoal = now;
-        resetPositions();
+        scoreGoal(1);
       } else {
         ball.x = 18;
         ball.vx = Math.abs(ball.vx) * 0.78;
       }
     } else if (ball.x >= W - 18) {
       if (inGoalMouth && now - lastGoal > 1200) {
-        score[0]++;
-        lastGoal = now;
-        resetPositions();
+        scoreGoal(0);
       } else {
         ball.x = W - 18;
         ball.vx = -Math.abs(ball.vx) * 0.78;
       }
     }
 
-    // Topa yakın oyuncu topu kontrol edebilir.
-    if (!ball.owner) {
-      for (const p of list) {
+    if (!goalEvent && !ball.owner) {
+      for (const p of active) {
         if (dist(p, ball) < 23) {
           ball.owner = p.id;
+          ball.lastTouch = p.id;
           ball.vx = 0;
           ball.vy = 0;
           break;
