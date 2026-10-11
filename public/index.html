@@ -1,844 +1,1080 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-<title>Mini HaxBall 6v6</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#08131f">
+<title>Mini HaxBall — Online 6v6</title>
 <style>
-* {
-    box-sizing: border-box;
-    user-select: none;
+:root {
+    --bg:#08131f;
+    --panel:#102236;
+    --line:#2c4962;
+    --blue:#299cff;
+    --red:#ff4b60;
+    --text:#f4f8ff;
+    --muted:#91a7bd;
 }
-html,
+* { box-sizing:border-box; }
 body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-}
-body {
+    margin:0;
+    min-height:100vh;
+    color:var(--text);
     background:
-        #07101b;
-    color: white;
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-    overflow: hidden;
+        radial-gradient(ellipse at 10% 0%,#163a5d 0,transparent 44%),
+        radial-gradient(ellipse at 100% 100%,#123d35 0,transparent 38%),
+        var(--bg);
+    font-family:Inter,system-ui,-apple-system,Arial,sans-serif;
 }
+button,input { font:inherit; }
+button { cursor:pointer; }
+button:disabled { opacity:.6;cursor:wait; }
+.hidden { display:none!important; }
 #menu {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background:
-        radial-gradient(
-            circle at center,
-            #214d7d 0%,
-            #101c2e 38%,
-            #050911 80%
-        );
-    z-index: 100;
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:20px;
 }
-.menu-box {
-    width: 440px;
-    max-width: 92vw;
-    padding: 35px;
-    background:
-        rgba(10, 20, 35, .96);
-    border:
-        1px solid #315579;
-    border-radius: 22px;
-    box-shadow:
-        0 25px 80px #000b;
-    text-align: center;
+.auth-card {
+    width:min(100%,470px);
+    padding:32px;
+    border:1px solid #36536d;
+    border-radius:24px;
+    background:rgba(10,25,41,.96);
+    box-shadow:0 28px 100px #0007;
+    backdrop-filter:blur(20px);
 }
-.logo {
-    font-size: 42px;
-    font-weight: 900;
-    margin-bottom: 5px;
+.brand {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    font-size:29px;
+    font-weight:950;
+    letter-spacing:-1px;
+}
+.brand-ball {
+    width:53px;
+    height:53px;
+    display:grid;
+    place-items:center;
+    border-radius:17px;
+    background:linear-gradient(135deg,#45b4ff,#165ad1);
+    box-shadow:0 8px 25px #258cff55;
+    font-size:26px;
 }
 .subtitle {
-    color: #9db2cc;
-    margin-bottom: 30px;
+    margin:10px 0 25px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
 }
-.input-label {
-    display: block;
-    text-align: left;
-    color: #b7c7db;
-    font-size: 14px;
-    margin-bottom: 8px;
+.tabs {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    padding:5px;
+    margin-bottom:22px;
+    border-radius:12px;
+    background:#071522;
 }
-#nameInput {
-    width: 100%;
-    padding: 14px;
-    border: 1px solid #345477;
-    border-radius: 11px;
-    outline: none;
-    background: #111e31;
-    color: white;
-    font-size: 16px;
-    margin-bottom: 18px;
+.tab {
+    border:0;
+    border-radius:9px;
+    padding:11px;
+    color:var(--muted);
+    background:transparent;
+    font-weight:800;
 }
-#nameInput:focus {
-    border-color:
-        #3596ff;
+.tab.active { color:white;background:#203d59; }
+.field { margin-bottom:15px; }
+label {
+    display:block;
+    margin-bottom:7px;
+    color:#cbd9e8;
+    font-size:12px;
+    font-weight:750;
 }
-.server-box {
-    text-align: left;
-    padding: 18px;
-    margin-bottom: 18px;
-    background:
-        #14253b;
-    border-radius: 14px;
-    border:
-        1px solid #294765;
+input {
+    width:100%;
+    padding:13px;
+    color:white;
+    background:#091827;
+    border:1px solid #304b64;
+    border-radius:11px;
+    outline:none;
 }
-.server-title {
-    font-size: 18px;
-    font-weight: bold;
+input:focus {
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px #299cff22;
 }
-.server-status {
-    float: right;
-    color:
-        #52e58a;
+.primary {
+    border:0;
+    border-radius:12px;
+    padding:14px;
+    color:white;
+    background:linear-gradient(110deg,#1685f5,#3866f4);
+    box-shadow:0 8px 24px #247eff25;
+    font-weight:900;
+    transition:filter .15s,transform .15s;
 }
-#playerCount {
-    display: block;
-    margin-top: 8px;
-    color:
-        #8fa6c0;
+.primary:hover { filter:brightness(1.1);transform:translateY(-1px); }
+#authButton { width:100%; }
+#notice {
+    min-height:20px;
+    margin:12px 0 0;
+    text-align:center;
+    color:#ff9ba8;
+    font-size:13px;
 }
-#joinButton {
-    width: 100%;
-    padding: 15px;
-    border: none;
-    border-radius: 12px;
-    background:
-        #258cff;
-    color: white;
-    font-size: 18px;
-    font-weight: 800;
-    cursor: pointer;
-    transition:
-        .15s;
+.server-info {
+    margin-top:22px;
+    padding:15px;
+    border:1px solid var(--line);
+    border-radius:13px;
+    background:#13283b;
 }
-#joinButton:hover {
-    background:
-        #46a0ff;
-    transform:
-        translateY(-1px);
+.server-row { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.server-status { color:#65edab;font-size:11px;font-weight:900; }
+.small { color:var(--muted);font-size:12px;margin-top:6px; }
+.help {
+    margin-top:18px;
+    color:#8299af;
+    text-align:center;
+    font-size:12px;
+    line-height:1.7;
 }
-#joinButton:disabled {
-    background:
-        #44566d;
-    cursor:
-        not-allowed;
-    transform:
-        none;
+
+/* Oyun arayüzü */
+#game { display:none;min-height:100vh;padding:16px; }
+.game-header {
+    max-width:1500px;
+    margin:0 auto 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
 }
-.menu-help {
-    margin-top: 18px;
-    color:
-        #71869f;
-    font-size: 12px;
-    line-height: 1.5;
-}
-game {
-    position: fixed;
-    inset: 0;
-    display: none;
-    background:
-        #07101b;
-}
-#canvas {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform:
-        translate(-50%, -50%);
-    width: 100vw;
-    height: 100vh;
-    object-fit: contain;
-}
-#topHud {
-    position: fixed;
-    top: 12px;
-    left: 50%;
-    transform:
-        translateX(-50%);
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 9px 18px;
-    background:
-        rgba(0,0,0,.65);
-    border-radius: 12px;
-    font-weight: bold;
-}
-.blueText {
-    color:
-        #2998ff;
-}
-.redText {
-    color:
-        #ff4050;
-}
-#connection {
-    position: fixed;
-    left: 12px;
-    top: 12px;
-    z-index: 10;
-    padding: 7px 11px;
-    background:
-        rgba(0,0,0,.65);
-    border-radius: 8px;
-    font-size: 12px;
+.game-brand { font-size:20px;font-weight:950; }
+.game-brand span { color:var(--blue); }
+.pill {
+    padding:8px 12px;
+    border:1px solid #29445b;
+    border-radius:10px;
+    color:#c6d8e9;
+    background:#12283b;
+    font-size:12px;
 }
 #leave {
-    position: fixed;
-    right: 12px;
-    top: 12px;
-    z-index: 10;
-    padding: 8px 13px;
-    border: none;
-    border-radius: 9px;
-    background:
-        rgba(0,0,0,.65);
-    color: white;
-    cursor: pointer;
+    padding:9px 13px;
+    color:white;
+    background:#162a3d;
+    border:1px solid #3a5268;
+    border-radius:10px;
 }
-#controls {
-    position: fixed;
-    bottom: 12px;
-    left: 50%;
-    transform:
-        translateX(-50%);
-    z-index: 10;
-    padding: 7px 12px;
-    background:
-        rgba(0,0,0,.55);
-    border-radius: 8px;
-    color:
-        #d3deea;
-    font-size: 12px;
+#leave:hover { background:#263f56; }
+
+.matchbar {
+    position:relative;
+    overflow:hidden;
+    width:min(100%,1100px);
+    margin:0 auto 14px;
+    padding:23px 20px 13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+    border:1px solid #2a4157;
+    border-radius:16px;
+    background:linear-gradient(90deg,#12365c,#0d1c2b 40%,#0d1c2b 60%,#481e2b);
+    box-shadow:0 12px 35px #0003;
 }
-@media (max-width: 700px) {
-    .logo {
-        font-size: 32px;
-    }
-    .menu-box {
-        padding: 25px;
-    }
-    #topHud {
-        font-size: 12px;
-        gap: 10px;
-    }
-    #controls {
-        font-size: 10px;
-    }
+.matchbar::before {
+    content:"MAÇ SÜRESİ";
+    position:absolute;
+    top:5px;
+    left:50%;
+    transform:translateX(-50%);
+    color:#91a9bf;
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:2px;
+}
+.team-name { font-size:12px;font-weight:950;letter-spacing:1.5px; }
+.blue { color:var(--blue); }
+.red { color:var(--red); }
+.score {
+    font-size:32px;
+    font-weight:950;
+    font-variant-numeric:tabular-nums;
+}
+.clock {
+    min-width:76px;
+    padding-top:8px;
+    text-align:center;
+    color:white;
+    font-size:21px;
+    font-weight:950;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 16px #5cbbff66;
+}
+#pitch-wrap {
+    max-width:1500px;
+    margin:auto;
+    overflow:hidden;
+    border:1px solid #42614f;
+    border-radius:18px;
+    background:#0d3b29;
+    box-shadow:0 20px 65px #0006;
+}
+#canvas { display:block;width:100%;height:auto;aspect-ratio:12/7; }
+
+.profile-panel {
+    width:min(100%,1100px);
+    margin:0 auto 14px;
+    padding:20px;
+    border:1px solid #2c4861;
+    border-radius:18px;
+    background:
+        radial-gradient(ellipse at 0 0,#1c4260 0,transparent 50%),
+        linear-gradient(135deg,#112438,#0b1928);
+    box-shadow:0 15px 40px #0003;
+}
+.profile-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+}
+.profile-heading h2 { margin:0;font-size:18px; }
+.profile-heading p { margin:6px 0 0;color:var(--muted);font-size:12px; }
+.profile-badge {
+    padding:7px 10px;
+    border:1px solid #32628a;
+    border-radius:8px;
+    color:#6fc1ff;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:1px;
+}
+.profile-form {
+    display:grid;
+    grid-template-columns:1.3fr 1fr .7fr auto;
+    align-items:end;
+    gap:12px;
+}
+.profile-field label { font-size:12px; }
+.profile-field input { min-width:0;padding:11px; }
+.profile-field input[type="color"] { height:42px;padding:4px;cursor:pointer; }
+.profile-save { width:auto;min-height:42px;padding:10px 17px;white-space:nowrap; }
+.profile-footer {
+    display:flex;
+    align-items:center;
+    gap:13px;
+    margin-top:18px;
+    padding-top:15px;
+    border-top:1px solid #2b4054;
+}
+.mini-shirt {
+    width:48px;height:48px;
+    display:grid;
+    place-items:center;
+    border:2px solid #ffffffaa;
+    border-radius:12px;
+    background:var(--blue);
+    color:white;
+    font-weight:950;
+    text-shadow:0 1px 3px #000;
+    box-shadow:0 5px 20px #0003;
+}
+#profilePreviewName { font-size:14px; }
+#profileMessage { margin-left:auto;color:#78efb0;font-size:12px; }
+.bottom-info {
+    max-width:1500px;
+    margin:12px auto 0;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    color:#91a7bd;
+    font-size:12px;
+}
+#connection { color:#7ff0b2; }
+
+@media(max-width:800px) {
+    .profile-form { grid-template-columns:1fr 1fr; }
+    .profile-save { width:100%; }
+}
+@media(max-width:600px) {
+    #menu { padding:12px; }
+    .auth-card { padding:23px 19px; }
+    .brand { font-size:24px; }
+    #game { padding:8px; }
+    .game-brand { font-size:16px; }
+    .matchbar { gap:11px;padding:23px 7px 12px; }
+    .team-name { font-size:10px; }
+    .score { font-size:25px; }
+    .clock { min-width:48px;font-size:16px; }
+    .profile-panel { padding:14px; }
+}
+@media(max-width:430px) {
+    .profile-form { grid-template-columns:1fr; }
+    .profile-heading h2 { font-size:16px; }
+    .profile-badge { font-size:8px; }
 }
 </style>
 </head>
 <body>
-<div id="menu">
-    <div class="menu-box">
-        <div class="logo">
-            ⚽ Mini HaxBall
+
+<section id="menu">
+    <div class="auth-card">
+        <div class="brand">
+            <div class="brand-ball">⚽</div>
+            <div>MINI <span style="color:#39a5ff">HAXBALL</span></div>
         </div>
-        <div class="subtitle">
-            Online 6v6 • 12 Oyuncu
+        <div class="subtitle">Arkadaşlarınla mücadele et · Online 6v6</div>
+
+        <div class="tabs">
+            <button class="tab active" id="loginTab" type="button">Giriş yap</button>
+            <button class="tab" id="registerTab" type="button">Kayıt ol</button>
         </div>
-        <label
-            class="input-label"
-            for="nameInput"
-        >
-            Oyuncu adın
-        </label>
-        <input
-            id="nameInput"
-            type="text"
-            maxlength="16"
-            placeholder="Örn: Yusuf Çelik"
-            autocomplete="off"
-        >
-        <div class="server-box">
-            <span
-                class="server-status"
-            >
-                ● ONLINE
-            </span>
-            <div class="server-title">
-                🇹🇷 Türkiye Sunucusu #1
+
+        <form id="authForm">
+            <div class="field">
+                <label for="username">Kullanıcı adı</label>
+                <input id="username" name="username" minlength="3" maxlength="16"
+                    autocomplete="username" placeholder="Kullanıcı adın" required>
             </div>
-            <span
-                id="playerCount"
-            >
-                0 / 12 oyuncu
-            </span>
+            <div class="field">
+                <label for="password">Şifre</label>
+                <input id="password" name="password" type="password"
+                    minlength="8" maxlength="128" autocomplete="current-password"
+                    placeholder="En az 8 karakter" required>
+            </div>
+            <button class="primary" id="authButton" type="submit">GİRİŞ YAP</button>
+            <p id="notice" role="status"></p>
+        </form>
+
+        <div class="server-info">
+            <div class="server-row">
+                <strong>⚽ Online Futbol</strong>
+                <span class="server-status" id="serverStatus">● KONTROL EDİLİYOR</span>
+            </div>
+            <div class="small">12 oyuncu kapasitesi · Her takımda 6 oyuncu</div>
         </div>
-        <button
-            id="joinButton"
-        >
-            SUNUCUYA GİR
-        </button>
-        <div class="menu-help">
-            Mavi takım: WASD<br>
-            Kırmızı takım: Ok tuşları<br>
-            Maksimum 12 oyuncu • 6v6
+        <div class="help">
+            Mavi takım: WASD · Kırmızı takım: Ok tuşları<br>
+            Profilin ve forma tercihlerin hesabına kaydedilir.
         </div>
     </div>
-</div>
-<div id="game">
-    <canvas
-        id="canvas"
-        width="1200"
-        height="700"
-    ></canvas>
-</div>
-<div id="topHud">
-    <span class="blueText">
-        MAVİ
-    </span>
-    <span id="blueScore">
-        0
-    </span>
-    <span>
-        -
-    </span>
-    <span id="redScore">
-        0
-    </span>
-    <span class="redText">
-        KIRMIZI
-    </span>
-</div>
-<div id="connection">
-    Bağlanıyor...
-</div>
-<button id="leave">
-    ← Menü
-</button>
-<div id="controls">
-    Hareket: WASD / Ok Tuşları
-</div>
+</section>
+
+<section id="game">
+    <header class="game-header">
+        <div class="game-brand">⚽ MINI <span>HAXBALL</span></div>
+        <div class="pill" id="playerCount">Oyuncular: 0 / 12</div>
+        <button id="leave" type="button">Oturumu kapat ↗</button>
+    </header>
+
+    <div class="matchbar">
+        <div class="team-name blue">MAVİ</div>
+        <div class="score blue" id="blueScore">0</div>
+        <div class="clock" id="clock">05:00</div>
+        <div class="score red" id="redScore">0</div>
+        <div class="team-name red">KIRMIZI</div>
+    </div>
+
+    <section class="profile-panel">
+        <div class="profile-heading">
+            <div>
+                <h2>Oyuncu profilim</h2>
+                <p>Forma numaranı, rengini ve sahadaki adını düzenle.</p>
+            </div>
+            <span class="profile-badge">OYUNCU KARTI</span>
+        </div>
+
+        <form id="profileForm" class="profile-form">
+            <div class="profile-field">
+                <label for="displayName">Sahadaki isim</label>
+                <input id="displayName" maxlength="16" minlength="2"
+                    placeholder="Örn. Sancak" required>
+            </div>
+            <div class="profile-field">
+                <label for="jerseyNumber">Forma numarası</label>
+                <input id="jerseyNumber" type="number" min="1" max="99"
+                    value="10" required>
+            </div>
+            <div class="profile-field">
+                <label for="jerseyColor">Forma rengi</label>
+                <input id="jerseyColor" type="color" value="#299cff">
+            </div>
+            <button class="primary profile-save" id="saveProfile" type="submit">
+                Profili Kaydet
+            </button>
+        </form>
+
+        <div class="profile-footer">
+            <div class="mini-shirt" id="shirtPreview">
+                <span id="shirtNumber">10</span>
+            </div>
+            <div>
+                <strong id="profilePreviewName">Oyuncu</strong>
+                <div class="small">Forma ön izlemesi</div>
+            </div>
+            <span id="profileMessage" role="status"></span>
+        </div>
+    </section>
+
+    <div id="pitch-wrap">
+        <canvas id="canvas" width="1200" height="700"></canvas>
+    </div>
+
+    <div class="bottom-info">
+        <span id="connection">Bağlantı kuruluyor...</span>
+        <span>Hareket: WASD / Ok tuşları</span>
+        <span id="teamLabel">Takım: —</span>
+    </div>
+</section>
+
 <script>
-const canvas =
-    document.getElementById(
-        "canvas"
-    );
-const ctx =
-    canvas.getContext("2d");
-const menu =
-    document.getElementById(
-        "menu"
-    );
-const game =
-    document.getElementById(
-        "game"
-    );
-const nameInput =
-    document.getElementById(
-        "nameInput"
-    );
-const joinButton =
-    document.getElementById(
-        "joinButton"
-    );
-const playerCount =
-    document.getElementById(
-        "playerCount"
-    );
-const blueScore =
-    document.getElementById(
-        "blueScore"
-    );
-const redScore =
-    document.getElementById(
-        "redScore"
-    );
-const connection =
-    document.getElementById(
-        "connection"
-    );
-const leave =
-    document.getElementById(
-        "leave"
-    );
-const W = 1200;
-const H = 700;
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+const menu = $("menu");
+const game = $("game");
+const authForm = $("authForm");
+const authButton = $("authButton");
+const notice = $("notice");
+const canvas = $("canvas");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+let authMode = "login";
+let token = localStorage.getItem("miniHaxBallToken") || "";
 let socket = null;
 let myId = null;
 let myTeam = null;
+let joined = false;
+let connecting = false;
+let animationStarted = false;
+
 let players = [];
-let ball = {
-    x: W / 2,
-    y: H / 2
-};
-let score = {
-    blue: 0,
-    red: 0
-};
-let field = {
-    x: 40,
-    y: 40,
-    width: 1120,
-    height: 620
-};
-let goal = {
-    width: 35,
-    height: 210
-};
-const keys = {
-    up: false,
-    down: false,
-    left: false,
-    right: false
-};
-let gameRunning = false;
-document.addEventListener(
-    "keydown",
-    event => {
-        const key =
-            event.key.toLowerCase();
-        if (
-            key === "w" ||
-            key === "arrowup"
-        ) {
-            keys.up = true;
-        }
-        if (
-            key === "s" ||
-            key === "arrowdown"
-        ) {
-            keys.down = true;
-        }
-        if (
-            key === "a" ||
-            key === "arrowleft"
-        ) {
-            keys.left = true;
-        }
-        if (
-            key === "d" ||
-            key === "arrowright"
-        ) {
-            keys.right = true;
-        }
+let ball = { x: W / 2, y: H / 2 };
+let score = { blue: 0, red: 0 };
+let matchTime = 300;
+let field = { x: 40, y: 40, width: 1120, height: 620 };
+let goal = { width: 35, height: 210 };
+
+const keys = { up:false, down:false, left:false, right:false };
+
+const displayNameInput = $("displayName");
+const jerseyNumberInput = $("jerseyNumber");
+const jerseyColorInput = $("jerseyColor");
+const profileForm = $("profileForm");
+const saveProfileButton = $("saveProfile");
+const profileMessage = $("profileMessage");
+
+function setMode(mode) {
+    authMode = mode;
+
+    $("loginTab").classList.toggle("active", mode === "login");
+    $("registerTab").classList.toggle("active", mode === "register");
+
+    authButton.textContent = mode === "login"
+        ? "GİRİŞ YAP"
+        : "HESAP OLUŞTUR";
+
+    $("password").autocomplete = mode === "login"
+        ? "current-password"
+        : "new-password";
+
+    notice.textContent = "";
+}
+
+$("loginTab").addEventListener("click", () => setMode("login"));
+$("registerTab").addEventListener("click", () => setMode("register"));
+
+async function api(url, options = {}) {
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.error || "İşlem başarısız.");
     }
-);
-document.addEventListener(
-    "keyup",
-    event => {
-        const key =
-            event.key.toLowerCase();
-        if (
-            key === "w" ||
-            key === "arrowup"
-        ) {
-            keys.up = false;
+
+    return data;
+}
+
+async function postJSON(url, body) {
+    return api(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+}
+
+authForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (connecting) return;
+
+    const username = $("username").value.trim();
+    const password = $("password").value;
+
+    connecting = true;
+    authButton.disabled = true;
+    notice.style.color = "#9bb5ce";
+    notice.textContent = "İşlemin yapılıyor...";
+
+    try {
+        const endpoint = authMode === "login"
+            ? "/api/login"
+            : "/api/register";
+
+        const result = await postJSON(endpoint, { username, password });
+
+        token = result.token;
+        localStorage.setItem("miniHaxBallToken", token);
+        $("password").value = "";
+
+        await loadProfile();
+        await connectSocket();
+    } catch (error) {
+        notice.style.color = "#ff9ba8";
+        notice.textContent = error.message;
+
+        if (socket) {
+            socket.close();
+            socket = null;
         }
-        if (
-            key === "s" ||
-            key === "arrowdown"
-        ) {
-            keys.down = false;
-        }
-        if (
-            key === "a" ||
-            key === "arrowleft"
-        ) {
-            keys.left = false;
-        }
-        if (
-            key === "d" ||
-            key === "arrowright"
-        ) {
-            keys.right = false;
-        }
+    } finally {
+        connecting = false;
+        authButton.disabled = false;
     }
-);
-function connect() {
-    const protocol =
-        location.protocol === "https:"
-            ? "wss:"
-            : "ws:";
-    socket =
-        new WebSocket(
-            protocol +
-            "//" +
-            location.host
-        );
-    socket.onopen = () => {
-        connection.textContent =
-            "🟢 Bağlandı";
-        connection.style.color =
-            "#52e58a";
-        const name =
-            nameInput.value.trim() ||
-            "Oyuncu";
-        socket.send(
-            JSON.stringify({
-                type: "join",
-                name: name
-            })
-        );
+});
+
+async function loadProfile() {
+    const data = await api("/api/profile", {
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    const profile = data.profile || {};
+
+    displayNameInput.value = profile.displayName || data.username || "";
+    jerseyNumberInput.value = profile.jerseyNumber || 10;
+
+    jerseyColorInput.value =
+        /^#[0-9a-fA-F]{6}$/.test(profile.jerseyColor || "")
+            ? profile.jerseyColor
+            : "#299cff";
+
+    updateProfilePreview();
+}
+
+function updateProfilePreview() {
+    $("profilePreviewName").textContent =
+        displayNameInput.value.trim() || "Oyuncu";
+
+    $("shirtNumber").textContent = jerseyNumberInput.value || "10";
+    $("shirtPreview").style.background = jerseyColorInput.value;
+}
+
+displayNameInput.addEventListener("input", updateProfilePreview);
+jerseyNumberInput.addEventListener("input", updateProfilePreview);
+jerseyColorInput.addEventListener("input", updateProfilePreview);
+
+profileForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (saveProfileButton.disabled) return;
+
+    const profile = {
+        displayName: displayNameInput.value.trim(),
+        jerseyNumber: Number(jerseyNumberInput.value),
+        jerseyColor: jerseyColorInput.value
     };
-    socket.onmessage =
-        event => {
+
+    saveProfileButton.disabled = true;
+    profileMessage.style.color = "#9bb5ce";
+    profileMessage.textContent = "Kaydediliyor...";
+
+    try {
+        const data = await api("/api/profile", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token
+            },
+            body: JSON.stringify(profile)
+        });
+
+        updateProfilePreview();
+
+        profileMessage.style.color = "#78efb0";
+        profileMessage.textContent = "✓ Profil kaydedildi";
+
+        // Sunucu profil değişikliğini oyuncu nesnesine de uygular.
+        if (data.profile) {
+            displayNameInput.value = data.profile.displayName;
+            jerseyNumberInput.value = data.profile.jerseyNumber;
+            jerseyColorInput.value = data.profile.jerseyColor;
+            updateProfilePreview();
+        }
+
+        setTimeout(() => {
+            profileMessage.textContent = "";
+        }, 3500);
+    } catch (error) {
+        profileMessage.style.color = "#ff8795";
+        profileMessage.textContent = error.message;
+    } finally {
+        saveProfileButton.disabled = false;
+    }
+});
+
+function connectSocket() {
+    return new Promise((resolve, reject) => {
+        if (socket) socket.close();
+
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(protocol + "//" + location.host);
+        socket = ws;
+
+        let settled = false;
+
+        const timeout = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            ws.close();
+            reject(new Error("Sunucu bağlantısı zaman aşımına uğradı."));
+        }, 10000);
+
+        function fail(error) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            reject(error);
+        }
+
+        ws.addEventListener("open", () => {
+            ws.send(JSON.stringify({ type: "join", token }));
+        });
+
+        ws.addEventListener("message", event => {
             let data;
+
             try {
-                data =
-                    JSON.parse(
-                        event.data
-                    );
+                data = JSON.parse(event.data);
             } catch {
                 return;
             }
-            if (
-                data.type ===
-                "welcome"
-            ) {
-                myId =
-                    data.id;
-                myTeam =
-                    data.team;
-                connection.textContent =
-                    "🟢 " +
-                    (
-                        myTeam === "blue"
-                            ? "Mavi takım"
-                            : "Kırmızı takım"
-                    );
+
+            if (data.type === "welcome") {
+                if (!settled) {
+                    settled = true;
+                    clearTimeout(timeout);
+                    resolve();
+                }
+
+                myId = data.id;
+                myTeam = data.team;
+                joined = true;
+
+                menu.style.display = "none";
+                game.style.display = "block";
+
+                $("teamLabel").textContent =
+                    "Takım: " + (myTeam === "blue" ? "Mavi" : "Kırmızı");
+
+                $("connection").textContent = "● Bağlandı";
+                $("connection").style.color = "#7ff0b2";
+
+                if (!animationStarted) {
+                    animationStarted = true;
+                    requestAnimationFrame(draw);
+                }
             }
-            if (
-                data.type ===
-                "state"
-            ) {
-                players =
-                    data.players;
-                ball =
-                    data.ball;
-                score =
-                    data.score;
-                field =
-                    data.field;
-                goal =
-                    data.goal;
-                playerCount.textContent =
-                    players.length +
-                    " / " +
-                    data.maxPlayers +
-                    " oyuncu";
-                blueScore.textContent =
-                    score.blue;
-                redScore.textContent =
-                    score.red;
+
+            if (data.type === "state") {
+                players = Array.isArray(data.players) ? data.players : [];
+                ball = data.ball || ball;
+                score = data.score || score;
+                matchTime = Number.isFinite(data.matchTime)
+                    ? data.matchTime : 300;
+
+                field = data.field || field;
+                goal = data.goal || goal;
+
+                $("playerCount").textContent =
+                    "Oyuncular: " + players.length + " / " +
+                    (data.maxPlayers || 12);
+
+                $("blueScore").textContent = score.blue;
+                $("redScore").textContent = score.red;
+
+                const secs = Math.max(0, Math.floor(matchTime));
+                $("clock").textContent =
+                    String(Math.floor(secs / 60)).padStart(2, "0") + ":" +
+                    String(secs % 60).padStart(2, "0");
             }
-            if (
-                data.type ===
-                "full"
-            ) {
-                alert(
-                    "Sunucu dolu! Maksimum 12 oyuncu."
-                );
-                leaveGame();
+
+            if (data.type === "full") {
+                fail(new Error(data.message || "Sunucu dolu."));
+                leaveGame(false);
             }
-        };
-    socket.onclose = () => {
-        connection.textContent =
-            "🔴 Bağlantı kesildi";
-        connection.style.color =
-            "#ff5362";
-    };
+
+            if (data.type === "auth_error") {
+                token = "";
+                localStorage.removeItem("miniHaxBallToken");
+                fail(new Error(data.message || "Tekrar giriş yapmalısın."));
+                leaveGame(false);
+            }
+        });
+
+        ws.addEventListener("error", () => {
+            fail(new Error("Sunucuya bağlanılamadı."));
+        });
+
+        ws.addEventListener("close", () => {
+            clearTimeout(timeout);
+
+            if (joined) {
+                joined = false;
+                $("connection").textContent = "● Bağlantı kesildi";
+                $("connection").style.color = "#ff7182";
+            }
+        });
+    });
 }
-setInterval(
-    () => {
-        if (
-            socket &&
-            socket.readyState ===
-                WebSocket.OPEN
-        ) {
-            socket.send(
-                JSON.stringify({
-                    type: "input",
-                    up: keys.up,
-                    down: keys.down,
-                    left: keys.left,
-                    right: keys.right
-                })
-            );
-        }
-    },
-    1000 / 30
-);
-joinButton.onclick = () => {
-    if (
-        nameInput.value
-            .trim()
-            .length === 0
-    ) {
-        nameInput.focus();
-        return;
+
+function sendInput() {
+    if (socket && socket.readyState === WebSocket.OPEN && joined) {
+        socket.send(JSON.stringify({ type: "input", ...keys }));
     }
-    joinButton.disabled = true;
-    menu.style.display =
-        "none";
-    game.style.display =
-        "block";
-    connect();
-    gameRunning = true;
+}
+
+setInterval(sendInput, 1000 / 30);
+
+const keyMap = {
+    w:"up", ArrowUp:"up",
+    s:"down", ArrowDown:"down",
+    a:"left", ArrowLeft:"left",
+    d:"right", ArrowRight:"right"
 };
-nameInput.addEventListener(
-    "keydown",
-    event => {
-        if (
-            event.key ===
-            "Enter"
-        ) {
-            joinButton.click();
-        }
-    }
-);
-function leaveGame() {
-    gameRunning = false;
-    if (socket) {
-        socket.close();
-        socket = null;
-    }
-    players = [];
+
+document.addEventListener("keydown", event => {
+    const key = keyMap[event.key.length === 1
+        ? event.key.toLowerCase()
+        : event.key];
+
+    if (!key) return;
+
+    if (game.style.display === "block") event.preventDefault();
+    keys[key] = true;
+});
+
+document.addEventListener("keyup", event => {
+    const key = keyMap[event.key.length === 1
+        ? event.key.toLowerCase()
+        : event.key];
+
+    if (key) keys[key] = false;
+});
+
+window.addEventListener("blur", () => {
+    Object.keys(keys).forEach(key => keys[key] = false);
+});
+
+async function leaveGame(logout = true) {
+    joined = false;
     myId = null;
     myTeam = null;
-    menu.style.display =
-        "flex";
-    game.style.display =
-        "none";
-    joinButton.disabled =
-        false;
-    keys.up = false;
-    keys.down = false;
-    keys.left = false;
-    keys.right = false;
-}
-leave.onclick =
-    leaveGame;
-function drawField() {
-    ctx.fillStyle =
-        "#15834b";
-    ctx.fillRect(
-        0,
-        0,
-        W,
-        H
-    );
-    ctx.fillStyle =
-        "#209653";
-    ctx.fillRect(
-        field.x,
-        field.y,
-        field.width,
-        field.height
-    );
-    ctx.strokeStyle =
-        "rgba(255,255,255,.9)";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(
-        field.x,
-        field.y,
-        field.width,
-        field.height
-    );
-    ctx.beginPath();
-    ctx.moveTo(
-        W / 2,
-        field.y
-    );
-    ctx.lineTo(
-        W / 2,
-        field.y +
-        field.height
-    );
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(
-        W / 2,
-        H / 2,
-        90,
-        0,
-        Math.PI * 2
-    );
-    ctx.stroke();
-    ctx.fillStyle =
-        "white";
-    ctx.beginPath();
-    ctx.arc(
-        W / 2,
-        H / 2,
-        5,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-    const goalTop =
-        H / 2 -
-        goal.height / 2;
-    ctx.fillStyle =
-        "#101820";
-    ctx.fillRect(
-        field.x -
-            goal.width,
-        goalTop,
-        goal.width,
-        goal.height
-    );
-    ctx.fillRect(
-        field.x +
-            field.width,
-        goalTop,
-        goal.width,
-        goal.height
-    );
-    ctx.strokeStyle =
-        "white";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(
-        field.x -
-            goal.width,
-        goalTop,
-        goal.width,
-        goal.height
-    );
-    ctx.strokeRect(
-        field.x +
-            field.width,
-        goalTop,
-        goal.width,
-        goal.height
-    );
-}
-function drawPlayer(player) {
-    const radius = 17;
-    ctx.fillStyle =
-        player.team === "blue"
-            ? "#2998ff"
-            : "#ff3d4f";
-    ctx.beginPath();
-    ctx.arc(
-        player.x,
-        player.y,
-        radius,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-    ctx.strokeStyle =
-        player.id === myId
-            ? "#ffe45c"
-            : "#ffffff";
-    ctx.lineWidth =
-        player.id === myId
-            ? 3
-            : 2;
-    ctx.stroke();
-    ctx.fillStyle =
-        "rgba(255,255,255,.45)";
-    ctx.beginPath();
-    ctx.arc(
-        player.x - 5,
-        player.y - 5,
-        4,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-    ctx.font =
-        "bold 13px Arial";
-    ctx.textAlign =
-        "center";
-    ctx.textBaseline =
-        "bottom";
-    const text =
-        player.name;
-    const width =
-        ctx.measureText(
-            text
-        ).width;
-    ctx.fillStyle =
-        "rgba(0,0,0,.55)";
-    ctx.fillRect(
-        player.x -
-            width / 2 -
-            4,
-        player.y -
-            radius -
-            19,
-        width + 8,
-        17
-    );
-    ctx.fillStyle =
-        "white";
-    ctx.fillText(
-        text,
-        player.x,
-        player.y -
-            radius -
-            5
-    );
-}
-function drawBall() {
-    ctx.fillStyle =
-        "white";
-    ctx.beginPath();
-    ctx.arc(
-        ball.x,
-        ball.y,
-        14,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-    ctx.strokeStyle =
-        "#202020";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle =
-        "#222";
-    ctx.beginPath();
-    ctx.arc(
-        ball.x,
-        ball.y,
-        4,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-}
-function draw() {
-    ctx.clearRect(
-        0,
-        0,
-        W,
-        H
-    );
-    drawField();
-    for (
-        const player
-        of players
-    ) {
-        drawPlayer(
-            player
-        );
+    players = [];
+
+    Object.keys(keys).forEach(key => keys[key] = false);
+
+    if (socket) {
+        const oldSocket = socket;
+        socket = null;
+        oldSocket.close();
     }
-    drawBall();
-    requestAnimationFrame(
-        draw
-    );
+
+    game.style.display = "none";
+    menu.style.display = "grid";
+
+    if (logout && token) {
+        try {
+            await fetch("/api/logout", {
+                method: "POST",
+                headers: { Authorization: "Bearer " + token }
+            });
+        } catch {}
+
+        localStorage.removeItem("miniHaxBallToken");
+        token = "";
+    }
+
+    notice.style.color = "#9bb5ce";
+    notice.textContent = logout ? "Oturum kapatıldı." : "";
 }
-draw();
+
+$("leave").addEventListener("click", () => leaveGame(true));
+
+function roundedRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+}
+
+function drawField() {
+    const grass = ctx.createLinearGradient(0, 0, 0, H);
+    grass.addColorStop(0, "#167447");
+    grass.addColorStop(1, "#0b5637");
+
+    ctx.fillStyle = grass;
+    ctx.fillRect(0, 0, W, H);
+
+    const stripes = 14;
+    const stripeWidth = field.width / stripes;
+
+    for (let i = 0; i < stripes; i++) {
+        if (i % 2 === 0) {
+            ctx.fillStyle = "rgba(150,255,174,.055)";
+            ctx.fillRect(
+                field.x + i * stripeWidth,
+                field.y,
+                stripeWidth,
+                field.height
+            );
+        }
+    }
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(240,255,245,.9)";
+    ctx.lineWidth = 3;
+
+    ctx.strokeRect(field.x, field.y, field.width, field.height);
+
+    ctx.beginPath();
+    ctx.moveTo(W / 2, field.y);
+    ctx.lineTo(W / 2, field.y + field.height);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, 90, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+
+    const boxHeight = 260;
+    const boxWidth = 125;
+    const boxY = H / 2 - boxHeight / 2;
+
+    ctx.strokeRect(field.x, boxY, boxWidth, boxHeight);
+    ctx.strokeRect(
+        field.x + field.width - boxWidth,
+        boxY,
+        boxWidth,
+        boxHeight
+    );
+
+    const goalTop = H / 2 - goal.height / 2;
+    const leftX = field.x - goal.width;
+    const rightX = field.x + field.width;
+
+    ctx.fillStyle = "rgba(3,20,18,.65)";
+    ctx.fillRect(leftX, goalTop, goal.width, goal.height);
+    ctx.fillRect(rightX, goalTop, goal.width, goal.height);
+
+    ctx.strokeStyle = "rgba(255,255,255,.28)";
+    ctx.lineWidth = 1;
+
+    for (let y = goalTop + 10; y < goalTop + goal.height; y += 14) {
+        ctx.beginPath();
+        ctx.moveTo(leftX, y);
+        ctx.lineTo(field.x, y);
+        ctx.moveTo(rightX, y);
+        ctx.lineTo(rightX + goal.width, y);
+        ctx.stroke();
+    }
+
+    for (let x = leftX + 10; x < field.x; x += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x, goalTop);
+        ctx.lineTo(x, goalTop + goal.height);
+        ctx.stroke();
+    }
+
+    for (let x = rightX + 10; x < rightX + goal.width; x += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x, goalTop);
+        ctx.lineTo(x, goalTop + goal.height);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(leftX, goalTop, goal.width, goal.height);
+    ctx.strokeRect(rightX, goalTop, goal.width, goal.height);
+
+    ctx.restore();
+}
+
+function drawPlayer(player) {
+    const r = 17;
+    const isMe = player.id === myId;
+    const color = /^#[0-9a-fA-F]{6}$/.test(player.jerseyColor || "")
+        ? player.jerseyColor
+        : (player.team === "blue" ? "#299cff" : "#ff4b60");
+
+    ctx.save();
+
+    // Yumuşak gölge
+    ctx.fillStyle = "#001b1280";
+    ctx.beginPath();
+    ctx.ellipse(player.x + 2, player.y + 7, r + 3, r * .7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (isMe) {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, r + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffe879";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    const gradient = ctx.createRadialGradient(
+        player.x - 6, player.y - 7, 2,
+        player.x, player.y, r + 2
+    );
+
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(.2, color);
+    gradient.addColorStop(1, "#102033");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMe ? "#ffe879" : "#ffffffcc";
+    ctx.lineWidth = isMe ? 3 : 1.5;
+    ctx.stroke();
+
+    // Forma numarası
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 13px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#0009";
+    ctx.shadowBlur = 3;
+    ctx.fillText(String(player.jerseyNumber || 10), player.x, player.y);
+    ctx.shadowBlur = 0;
+
+    // İsim etiketi
+    const name = String(player.name || "Oyuncu").slice(0, 16);
+    ctx.font = "bold 12px Arial";
+    const width = Math.min(ctx.measureText(name).width + 14, 150);
+    const labelX = player.x - width / 2;
+    const labelY = player.y - r - 25;
+
+    roundedRect(labelX, labelY, width, 18, 5);
+    ctx.fillStyle = "#07131de8";
+    ctx.fill();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(name, player.x, labelY + 9, 140);
+
+    ctx.restore();
+}
+
+function drawBall() {
+    ctx.save();
+
+    ctx.fillStyle = "#00180e66";
+    ctx.beginPath();
+    ctx.ellipse(ball.x + 3, ball.y + 7, 13, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const gradient = ctx.createRadialGradient(
+        ball.x - 5, ball.y - 6, 1,
+        ball.x, ball.y, 15
+    );
+
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(.7, "#e5edf3");
+    gradient.addColorStop(1, "#8997a5");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#24303b";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#303b47";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawField();
+
+    for (const player of players) drawPlayer(player);
+    drawBall();
+
+    requestAnimationFrame(draw);
+}
+
+// Sunucu durumunu giriş ekranında göster.
+async function checkServer() {
+    try {
+        const data = await api("/api/health");
+        $("serverStatus").textContent = "● ÇEVRİM İÇİ";
+        $("serverStatus").style.color = "#65edab";
+    } catch {
+        $("serverStatus").textContent = "● BAĞLANTI BEKLENİYOR";
+        $("serverStatus").style.color = "#ffca72";
+    }
+}
+
+checkServer();
+
+// Önceki oturum anahtarı varsa hesabı yeniden doğrula.
+async function restoreSession() {
+    if (!token) return;
+
+    try {
+        await loadProfile();
+        connecting = true;
+        await connectSocket();
+    } catch {
+        localStorage.removeItem("miniHaxBallToken");
+        token = "";
+    } finally {
+        connecting = false;
+    }
+}
+
+restoreSession();
 </script>
 </body>
 </html>
