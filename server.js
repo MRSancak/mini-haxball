@@ -148,22 +148,33 @@ function verifyPassword(password, record) {
 }
 
 function publicUser(username, user) {
+  if (!user || typeof user !== 'object') {
+    throw new Error('Kullanıcı verisi bulunamadı.');
+  }
+
+  const profile = user.profile &&
+    typeof user.profile === 'object'
+    ? user.profile
+    : {};
+
+  const number = Number(profile.jerseyNumber);
+
   return {
     username: user.username || username,
     profile: {
       displayName:
-        user.profile?.displayName ||
+        profile.displayName ||
         user.username ||
         username,
 
       jerseyNumber:
-        user.profile?.jerseyNumber || 10,
+        Number.isInteger(number) && number >= 1 && number <= 99
+          ? number
+          : 10,
 
       jerseyColor:
-        /^#[0-9a-fA-F]{6}$/.test(
-          user.profile?.jerseyColor || ''
-        )
-          ? user.profile.jerseyColor
+        /^#[0-9a-fA-F]{6}$/.test(profile.jerseyColor || '')
+          ? profile.jerseyColor
           : '#299cff'
     }
   };
