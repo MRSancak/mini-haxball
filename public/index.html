@@ -228,20 +228,41 @@ function show(id) {
 }
 function err(id, msg) { $(id).textContent = msg || ''; }
 async function api(url, data) {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(data)
-  });
-  const j = await r.json();
-  if (!r.ok) throw Error(j.error || 'İşlem başarısız');
-  return j;
-}
-function setUser(u) {
-  user = u;
-  sessionStorage.setItem('mh_user', JSON.stringify(u));
-  renderOwnProfile(u);
-  show('dashboardView');
+  let response;
+
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    throw new Error(
+      'Sunucuya bağlanılamadı. İnternet bağlantısını ve sunucunun çalıştığını kontrol et.'
+    );
+  }
+
+  let result;
+
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(
+      'Sunucudan geçerli bir JSON yanıtı alınamadı. API adresini kontrol et.'
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      result.error || result.message || 'İşlem başarısız oldu.'
+    );
+  }
+
+  return result;
 }
 function renderOwnProfile(u) {
   $('avatar').textContent = String(u.number).padStart(2,'0');
