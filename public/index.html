@@ -304,17 +304,70 @@ $('registerForm').onsubmit = async e => {
   } catch (x) { err('registerError', x.message); }
 };
 
-$('loginForm').onsubmit = async e => {
-  e.preventDefault(); err('loginError','');
-  const f = new FormData(e.currentTarget);
+$('loginForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const form = e.currentTarget;
+  const button = form.querySelector('button[type="submit"], button:not([type])');
+  const errorBox = $('loginError');
+
+  errorBox.textContent = '';
+
+  const formData = new FormData(form);
+  const username = String(formData.get('username') || '').trim();
+  const password = String(formData.get('password') || '');
+
+  if (!username || !password) {
+    errorBox.textContent = 'Kullanıcı adı ve şifre zorunludur.';
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'GİRİŞ YAPILIYOR...';
+  }
+
   try {
-    const r = await api('/api/login', {
-      username: f.get('username'),
-      password: f.get('password')
+    const result = await api('/api/login', {
+      username: username,
+      password: password
     });
-    setUser(r.user);
-  } catch (x) { err('loginError', x.message); }
-};
+
+    // API yanıtının beklenen kullanıcı bilgilerini içerdiğini doğrula.
+    const loggedInUser = result.user || result;
+
+    if (
+      !loggedInUser ||
+      typeof loggedInUser !== 'object' ||
+      !loggedInUser.username
+    ) {
+      throw new Error(
+        'Giriş yanıtı geçersiz. Sunucunun /api/login yanıtını kontrol et.'
+      );
+    }
+
+    if (
+      loggedInUser.displayName == null ||
+      loggedInUser.number == null
+    ) {
+      throw new Error(
+        'Oyuncu profili eksik. Sunucunun kullanıcı bilgilerini kontrol et.'
+      );
+    }
+
+    setUser(loggedInUser);
+    form.reset();
+
+  } catch (error) {
+    errorBox.textContent =
+      error.message || 'Giriş başarısız. Tekrar deneyin.';
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'OYUNA GİR';
+    }
+  }
+});
 
 $('logoutBtn').onclick = () => {
   leave();
