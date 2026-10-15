@@ -8,14 +8,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-  --bg:#0c1117;
-  --panel:#16222d;
-  --line:#31495b;
+  --bg:#070b10;
+  --panel:#111a24;
+  --line:#223647;
   --cream:#f4efcf;
   --lime:#c9f06b;
   --cyan:#64dce8;
-  --red:#ff7b7b;
-  --blue:#4ca6ff;
+  --red:#ff6b6b;
+  --blue:#3bb2ff;
 }
 
 *, *::before, *::after { box-sizing:border-box; }
@@ -33,30 +33,31 @@ button {
   cursor:pointer;
   border:0;
   background:var(--lime);
-  color:#121921;
-  padding:12px;
+  color:#0d131a;
+  padding:12px 18px;
   font:10px 'Press Start 2P';
-  box-shadow:4px 4px #718e39;
-  transition: transform 0.08s;
+  box-shadow:4px 4px #658c2c;
+  transition: transform 0.08s, background 0.2s;
 }
-button:active { transform: translate(2px, 2px); box-shadow:2px 2px #718e39; }
+button:hover { background: #d7ff77; }
+button:active { transform: translate(2px, 2px); box-shadow:2px 2px #658c2c; }
 button:disabled { opacity:.5; cursor:not-allowed; }
 
 .secondary {
-  background:#263c4a;
+  background:#1f303f;
   color:var(--cream);
-  box-shadow:4px 4px #080e12;
+  box-shadow:4px 4px #070c10;
 }
-.secondary:active { box-shadow:2px 2px #080e12; }
+.secondary:hover { background: #273d50; }
 
 .danger {
   background:var(--red);
-  color:#121921;
+  color:#0d131a;
   box-shadow:4px 4px #9c3f3f;
 }
 
 .hidden { display:none!important; }
-.wrap { max-width:1300px; margin:auto; padding:20px; }
+.wrap { max-width:1450px; margin:auto; padding:20px; }
 
 .top, .game-head {
   display:flex;
@@ -70,7 +71,7 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 .brand {
   font:16px/1.8 'Press Start 2P';
   color:var(--lime);
-  text-shadow: 2px 2px #000;
+  text-shadow: 2px 2px #000, 0 0 10px rgba(201,240,107,0.4);
 }
 
 .tag, h2, h3 {
@@ -83,46 +84,48 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 .panel {
   background:var(--panel);
   border:3px solid var(--line);
-  padding:20px;
-  box-shadow:6px 6px #080e12;
+  padding:24px;
+  box-shadow:8px 8px #040609, inset 0 0 20px rgba(0,0,0,0.5);
   margin-bottom: 20px;
 }
 
 input {
   width:100%;
   padding:12px;
-  background:#090e13;
+  background:#070b10;
   color:white;
-  border:2px solid #3e5a6f;
-  margin-bottom: 12px;
+  border:2px solid #2a4359;
+  margin-bottom: 14px;
   font-size: 20px;
+  outline: none;
 }
+input:focus { border-color: var(--cyan); }
 
 label { display:block; margin:6px 0; font-size: 15px; }
 
-.auth-grid { max-width:480px; margin:40px auto; }
-
+.auth-grid { max-width:480px; margin:50px auto; }
 .error { color:var(--red); min-height:24px; font-size: 16px; margin-top: 5px; }
-.note { color:#8da4b0; font-size: 18px; }
+.note { color:#849da8; font-size: 18px; }
 
 .dashboard {
   display:grid;
-  grid-template-columns:340px minmax(0,1fr);
+  grid-template-columns:350px minmax(0,1fr);
   gap:20px;
 }
 
-.profile-top { display:flex; gap:12px; align-items:center; margin-bottom: 15px; }
+.profile-top { display:flex; gap:14px; align-items:center; margin-bottom: 18px; }
 
 .avatar {
-  width:65px;
-  height:65px;
+  width:70px;
+  height:70px;
   display:grid;
   place-items:center;
   background:var(--lime);
-  color:#121921;
+  color:#0d131a;
   font-family:'Press Start 2P';
   font-size: 18px;
-  border: 3px solid #31495b;
+  border: 3px solid #223647;
+  box-shadow: 4px 4px #000;
 }
 
 .stat {
@@ -130,15 +133,15 @@ label { display:block; margin:6px 0; font-size: 15px; }
   justify-content:space-between;
   gap:10px;
   border-top:1px dashed var(--line);
-  padding:8px 0;
+  padding:10px 0;
   font-size: 19px;
 }
 .stat b { color:var(--lime); font-weight:normal; text-align:right; }
 
 .server {
-  background:#0e1720;
+  background:#090f16;
   border:2px solid var(--line);
-  padding:18px;
+  padding:20px;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -146,43 +149,88 @@ label { display:block; margin:6px 0; font-size: 15px; }
   margin:12px 0;
 }
 
+.teams-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.team-box {
+  background: #090f16;
+  border: 3px solid #3bb2ff;
+  padding: 16px;
+}
+.team-box.red { border-color: #ff6b6b; }
+.role-select {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.role-card {
+  background: #16222d;
+  border: 2px solid var(--line);
+  padding: 10px;
+  text-align: center;
+}
+
 .score-board {
-  background:#060a0f;
+  background:#05080c;
   border:3px solid var(--line);
-  padding:12px 20px;
+  padding:12px 24px;
   font:12px 'Press Start 2P';
   display: flex;
   gap: 15px;
   align-items: center;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
 }
-.score-board span { color:var(--lime); }
+.score-board span { color:var(--lime); text-shadow: 0 0 8px rgba(201,240,107,0.5); }
 
 .game-layout {
   display:grid;
   grid-template-columns:minmax(0,1fr) 280px;
-  gap:14px;
+  gap:16px;
 }
+
+.pitch-wrap { position: relative; }
 
 #pitch {
   width:100%;
   height:auto;
   display:block;
-  border:4px solid #b8c894;
+  border:6px solid #1a2a1e;
   image-rendering:pixelated;
-  background:#3b8247;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  background:#2f693a;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.7), inset 0 0 50px rgba(0,0,0,0.3);
 }
 
-.sidebox { background:var(--panel); border:3px solid var(--line); padding:14px; margin-bottom:14px; }
-.key { display:inline-block; background:#080e12; border:2px solid #3e5a6f; padding:3px 6px; color:var(--lime); font-size: 15px; }
+.goal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 11, 16, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  text-align: center;
+}
+.goal-banner {
+  font: 32px 'Press Start 2P';
+  color: var(--lime);
+  text-shadow: 4px 4px #000, 0 0 20px var(--lime);
+  margin-bottom: 15px;
+}
+
+.sidebox { background:var(--panel); border:3px solid var(--line); padding:16px; margin-bottom:14px; }
+.key { display:inline-block; background:#070b10; border:2px solid #2a4359; padding:4px 8px; color:var(--lime); font-size: 15px; font-weight:bold; }
 
 #playersList { max-height:280px; overflow:auto; font-size: 18px; }
-.status { min-height:24px; color:#8da4b0; margin-top:10px; font-size: 18px; }
-
-.footer { text-align:center; color:#5b7380; margin:25px; font-size: 16px; }
+.status { min-height:24px; color:#849da8; margin-top:10px; font-size: 18px; }
+.footer { text-align:center; color:#4a626e; margin:25px; font-size: 16px; }
 
 @media(max-width:800px) {
-  .auth-grid, .dashboard, .game-layout { grid-template-columns:1fr; }
+  .auth-grid, .dashboard, .game-layout, .teams-grid { grid-template-columns:1fr; }
   .wrap { padding:10px; }
 }
 </style>
@@ -198,7 +246,6 @@ label { display:block; margin:6px 0; font-size: 15px; }
   <div id="headerRight" class="tag">GİRİŞ YAPILMADI</div>
 </header>
 
-<!-- GİRİŞ / KAYIT EKRANI -->
 <section id="authView">
   <div class="auth-grid">
     <div class="panel">
@@ -227,7 +274,6 @@ label { display:block; margin:6px 0; font-size: 15px; }
   </div>
 </section>
 
-<!-- OYUNCU DASHBOARD / PROFİL & İSTATİSTİKLER -->
 <section id="dashboardView" class="hidden">
   <div class="dashboard">
     <aside class="panel">
@@ -274,7 +320,38 @@ label { display:block; margin:6px 0; font-size: 15px; }
   </div>
 </section>
 
-<!-- MAÇ OYUN EKRANI -->
+<section id="lobbyView" class="hidden">
+  <div class="panel">
+    <h2>TAKIMINI VE MEVKİNİ SEÇ</h2>
+    <div class="teams-grid">
+      <div class="team-box">
+        <h3 style="color:#3bb2ff;">MAVİ TAKIM</h3>
+        <div id="blueSlots" style="margin:10px 0;"></div>
+        <div class="role-select">
+          <div class="role-card"><h3>DEF</h3><button data-team="blue" data-role="DEF">SEÇ</button></div>
+          <div class="role-card"><h3>MID</h3><button data-team="blue" data-role="MID">SEÇ</button></div>
+          <div class="role-card"><h3>FWD</h3><button data-team="blue" data-role="FWD">SEÇ</button></div>
+        </div>
+      </div>
+
+      <div class="team-box red">
+        <h3 style="color:#ff6b6b;">KIRMIZI TAKIM</h3>
+        <div id="redSlots" style="margin:10px 0;"></div>
+        <div class="role-select">
+          <div class="role-card"><h3>DEF</h3><button data-team="red" data-role="DEF">SEÇ</button></div>
+          <div class="role-card"><h3>MID</h3><button data-team="red" data-role="MID">SEÇ</button></div>
+          <div class="role-card"><h3>FWD</h3><button data-team="red" data-role="FWD">SEÇ</button></div>
+        </div>
+      </div>
+    </div>
+    <div id="lobbyStatus" class="status">Takım ve mevki seçin.</div>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button id="enterPitchBtn" style="flex:1;">SAHAYA GEÇ</button>
+      <button id="backToDashBtn" class="secondary">PANELE DÖN</button>
+    </div>
+  </div>
+</section>
+
 <section id="gameView" class="hidden">
   <div class="game-head">
     <div class="score-board">
@@ -288,15 +365,22 @@ label { display:block; margin:6px 0; font-size: 15px; }
 
   <div class="game-layout">
     <div>
-      <canvas id="pitch" width="1200" height="700"></canvas>
-      <div id="gameStatus" class="status">WASD ile hareket et | BOŞLUK (SPACE) ile rakipten top kap!</div>
+      <div class="pitch-wrap">
+        <canvas id="pitch" width="1400" height="800"></canvas>
+        <div id="goalOverlay" class="goal-overlay hidden">
+          <div class="goal-banner">GOOOOL!</div>
+          <div id="goalScorerText" class="note" style="color:var(--cream); font-size:24px;">Golü Atan: -</div>
+        </div>
+      </div>
+      <div id="gameStatus" class="status">WASD: Hareket | Top Sende İken SPACE: Şut | Top Sende Değilken SPACE: Top Kapma</div>
     </div>
 
     <aside>
       <div class="sidebox">
         <h3>KONTROLLER</h3>
         <p><span class="key">W A S D</span> Hareket et</p>
-        <p><span class="key">SPACE</span> Top Kapma (Tackle)</p>
+        <p><span class="key">SPACE</span> Top Sende: <b>Şut Çek</b></p>
+        <p><span class="key">SPACE</span> Top Rakipte: <b>Top Kap</b></p>
       </div>
       <div class="sidebox">
         <h3>SAHADAKİLER</h3>
@@ -309,5 +393,311 @@ label { display:block; margin:6px 0; font-size: 15px; }
 <div class="footer">MINI HAXBALL PIXEL LEAGUE</div>
 </div>
 
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+let token = localStorage.getItem('mh_token') || '';
+let currentUser = null;
+let ws = null;
+let myId = null;
+let keys = { up:false, down:false, left:false, right:false, space:false };
+
+function show(id) {
+  ['authView','dashboardView','lobbyView','gameView'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+}
+
+async function api(endpoint, data) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'İşlem başarısız.');
+  return json;
+}
+
+async function apiPut(endpoint, data) {
+  const res = await fetch(endpoint, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Güncelleme başarısız.');
+  return json;
+}
+
+$('authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const res = await api('/api/login', { username: $('authUsername').value, password: $('authPassword').value });
+    loginSuccess(res);
+  } catch (err) { $('authError').textContent = err.message; }
+});
+
+$('registerBtn').onclick = async () => {
+  try {
+    const res = await api('/api/register', { username: $('authUsername').value, password: $('authPassword').value });
+    loginSuccess(res);
+  } catch (err) { $('authError').textContent = err.message; }
+};
+
+$('guestBtn').onclick = async () => {
+  const randName = 'Misafir_' + Math.floor(Math.random() * 900 + 100);
+  const randPass = Math.random().toString(36).slice(-10) + 'A1!';
+  try {
+    const reg = await api('/api/register', { username: randName, password: randPass });
+    loginSuccess(reg);
+  } catch (err) { $('authError').textContent = err.message; }
+};
+
+function loginSuccess(res) {
+  token = res.token;
+  localStorage.setItem('mh_token', token);
+  currentUser = res;
+  updateProfileUI();
+  show('dashboardView');
+}
+
+async function checkSession() {
+  if (!token) return;
+  try {
+    const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) throw new Error();
+    currentUser = await res.json();
+    updateProfileUI();
+    show('dashboardView');
+  } catch {
+    localStorage.removeItem('mh_token');
+    token = '';
+    show('authView');
+  }
+}
+
+function updateProfileUI() {
+  if (!currentUser) return;
+  $('headerRight').textContent = 'OYUNCU: ' + currentUser.profile.displayName;
+  $('displayProfileName').textContent = currentUser.profile.displayName;
+  $('profileUsername').textContent = currentUser.username;
+  $('statMatches').textContent = currentUser.stats.matches;
+  $('statGoals').textContent = currentUser.stats.goals;
+  $('statAssists').textContent = currentUser.stats.assists;
+  $('editDisplayName').value = currentUser.profile.displayName;
+  $('editJerseyNum').value = currentUser.profile.jerseyNumber;
+  $('editJerseyColor').value = currentUser.profile.jerseyColor;
+  $('avatar').textContent = currentUser.profile.jerseyNumber;
+  $('avatar').style.backgroundColor = currentUser.profile.jerseyColor;
+}
+
+$('saveProfileBtn').onclick = async () => {
+  try {
+    const res = await apiPut('/api/profile', {
+      displayName: $('editDisplayName').value,
+      jerseyNumber: Number($('editJerseyNum').value),
+      jerseyColor: $('editJerseyColor').value
+    });
+    currentUser.profile = res.profile;
+    updateProfileUI();
+    $('profileError').textContent = 'Profil güncellendi!';
+    setTimeout(() => $('profileError').textContent = '', 2000);
+  } catch (err) { $('profileError').textContent = err.message; }
+};
+
+$('logoutBtn').onclick = () => {
+  localStorage.removeItem('mh_token');
+  token = '';
+  currentUser = null;
+  show('authView');
+};
+
+$('joinServerBtn').onclick = () => {
+  connectWebSocket();
+  show('lobbyView');
+};
+
+$('backToDashBtn').onclick = () => {
+  if (ws) ws.close();
+  show('dashboardView');
+};
+
+$('leaveGameBtn').onclick = () => {
+  if (ws) ws.close();
+  checkSession();
+  show('lobbyView');
+};
+
+document.querySelectorAll('[data-team][data-role]').forEach(btn => {
+  btn.onclick = () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'select', team: btn.dataset.team, role: btn.dataset.role }));
+  };
+});
+
+$('enterPitchBtn').onclick = () => {
+  show('gameView');
+};
+
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host);
+
+  ws.onopen = () => { ws.send(JSON.stringify({ type: 'join', token })); };
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'welcome') {
+      myId = msg.id;
+    } else if (msg.type === 'state') {
+      renderLobby(msg);
+      renderGame(msg);
+    } else if (msg.type === 'goal') {
+      showGoalAnimation(msg.scorer);
+    } else if (msg.type === 'full' || msg.type === 'auth_error') {
+      alert(msg.message);
+      show('dashboardView');
+    }
+  };
+}
+
+function renderLobby(state) {
+  const bluePlayers = state.players.filter(p => p.team === 'blue');
+  const redPlayers = state.players.filter(p => p.team === 'red');
+
+  $('blueSlots').innerHTML = bluePlayers.map(p => '<div>#' + p.jerseyNumber + ' ' + p.name + ' (' + (p.role || 'Seçmedi') + ')</div>').join('') || '<div class="note">Boş</div>';
+  $('redSlots').innerHTML = redPlayers.map(p => '<div>#' + p.jerseyNumber + ' ' + p.name + ' (' + (p.role || 'Seçmedi') + ')</div>').join('') || '<div class="note">Boş</div>';
+}
+
+function showGoalAnimation(scorerName) {
+  $('goalScorerText').textContent = 'Golü Atan: ' + (scorerName || 'Bilinmiyor');
+  $('goalOverlay').classList.remove('hidden');
+  setTimeout(() => { $('goalOverlay').classList.add('hidden'); }, 2500);
+}
+
+const canvas = $('pitch');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function renderGame(state) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#2f693a';
+  ctx.fillRect(40, 40, 1320, 720);
+
+  ctx.fillStyle = '#285d32';
+  for (let x = 40; x < 1360; x += 90) {
+    ctx.fillRect(x, 40, 45, 720);
+  }
+
+  ctx.strokeStyle = '#e2ecd1';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(40, 40, 1320, 720);
+
+  ctx.beginPath();
+  ctx.moveTo(700, 40);
+  ctx.lineTo(700, 760);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(700, 400, 95, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeRect(40, 260, 55, 280);
+  ctx.strokeRect(1305, 260, 55, 280);
+
+  state.players.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 6, 16, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
+    ctx.fillStyle = p.jerseyColor;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = p.id === myId ? '#c9f06b' : '#0d131a';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.jerseyNumber, p.x, p.y + 4);
+
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#f4efcf';
+    ctx.fillText(p.name, p.x, p.y - 24);
+
+    if (p.slowTimer > 0) {
+      ctx.fillStyle = '#ff6b6b';
+      ctx.font = '10px monospace';
+      ctx.fillText('YAVAŞLA!', p.x, p.y - 38);
+    }
+  });
+
+  if (state.ball) {
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y + 3, 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#1a2a1e';
+    ctx.stroke();
+  }
+
+  $('blueScore').textContent = state.score.blue;
+  $('redScore').textContent = state.score.red;
+
+  const m = Math.floor(state.matchTime / 60);
+  const s = state.matchTime % 60;
+  $('timeLeft').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+
+  $('playersList').innerHTML = state.players.map(p => 
+    '<div style="color:' + (p.team === 'blue' ? '#3bb2ff' : '#ff6b6b') + '">' +
+    (p.id === myId ? '▶ ' : '') + '#' + p.jerseyNumber + ' ' + p.name + ' (' + p.team.toUpperCase() + ')' +
+    '</div>'
+  ).join('');
+}
+
+const keyMap = { w:'up', ArrowUp:'up', s:'down', ArrowDown:'down', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right' };
+
+window.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    keys.space = true;
+    sendInput();
+    e.preventDefault();
+  }
+  if (keyMap[e.key]) {
+    keys[keyMap[e.key]] = true;
+    sendInput();
+  }
+});
+
+window.addEventListener('keyup', e => {
+  if (e.key === ' ') {
+    keys.space = false;
+    sendInput();
+  }
+  if (keyMap[e.key]) {
+    keys[keyMap[e.key]] = false;
+    sendInput();
+  }
+});
+
+function sendInput() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'input', ...keys }));
+  keys.space = false;
+}
+
+checkSession();
+})();
+</script>
 </body>
 </html>
