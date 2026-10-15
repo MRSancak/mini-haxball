@@ -14,7 +14,7 @@ const wss = new WebSocket.Server({ server, perMessageDeflate: false });
 const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '32kb' }));
 
-// FULL HTML / CSS / JS ARAYÜZÜ (Piksel Sanat & Gelişmiş Grafikler)
+// GELİŞMİŞ PİKSEL GRAFİKLER VE ŞIK ARAYÜZ (HTML & CSS)
 app.get('/', (_req, res) => {
   res.send(`<!doctype html>
 <html lang="tr">
@@ -26,14 +26,14 @@ app.get('/', (_req, res) => {
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-  --bg:#0c1117;
-  --panel:#16222d;
-  --line:#31495b;
+  --bg:#070b10;
+  --panel:#111a24;
+  --line:#223647;
   --cream:#f4efcf;
   --lime:#c9f06b;
   --cyan:#64dce8;
-  --red:#ff7b7b;
-  --blue:#4ca6ff;
+  --red:#ff6b6b;
+  --blue:#3bb2ff;
 }
 
 *, *::before, *::after { box-sizing:border-box; }
@@ -51,30 +51,31 @@ button {
   cursor:pointer;
   border:0;
   background:var(--lime);
-  color:#121921;
-  padding:12px;
+  color:#0d131a;
+  padding:12px 18px;
   font:10px 'Press Start 2P';
-  box-shadow:4px 4px #718e39;
-  transition: transform 0.08s;
+  box-shadow:4px 4px #658c2c;
+  transition: transform 0.08s, background 0.2s;
 }
-button:active { transform: translate(2px, 2px); box-shadow:2px 2px #718e39; }
+button:hover { background: #d7ff77; }
+button:active { transform: translate(2px, 2px); box-shadow:2px 2px #658c2c; }
 button:disabled { opacity:.5; cursor:not-allowed; }
 
 .secondary {
-  background:#263c4a;
+  background:#1f303f;
   color:var(--cream);
-  box-shadow:4px 4px #080e12;
+  box-shadow:4px 4px #070c10;
 }
-.secondary:active { box-shadow:2px 2px #080e12; }
+.secondary:hover { background: #273d50; }
 
 .danger {
   background:var(--red);
-  color:#121921;
+  color:#0d131a;
   box-shadow:4px 4px #9c3f3f;
 }
 
 .hidden { display:none!important; }
-.wrap { max-width:1300px; margin:auto; padding:20px; }
+.wrap { max-width:1320px; margin:auto; padding:20px; }
 
 .top, .game-head {
   display:flex;
@@ -88,7 +89,7 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 .brand {
   font:16px/1.8 'Press Start 2P';
   color:var(--lime);
-  text-shadow: 2px 2px #000;
+  text-shadow: 2px 2px #000, 0 0 10px rgba(201,240,107,0.4);
 }
 
 .tag, h2, h3 {
@@ -101,46 +102,49 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 .panel {
   background:var(--panel);
   border:3px solid var(--line);
-  padding:20px;
-  box-shadow:6px 6px #080e12;
+  padding:24px;
+  box-shadow:8px 8px #040609, inset 0 0 20px rgba(0,0,0,0.5);
   margin-bottom: 20px;
 }
 
 input {
   width:100%;
   padding:12px;
-  background:#090e13;
+  background:#070b10;
   color:white;
-  border:2px solid #3e5a6f;
-  margin-bottom: 12px;
+  border:2px solid #2a4359;
+  margin-bottom: 14px;
   font-size: 20px;
+  outline: none;
 }
+input:focus { border-color: var(--cyan); }
 
 label { display:block; margin:6px 0; font-size: 15px; }
 
-.auth-grid { max-width:480px; margin:40px auto; }
+.auth-grid { max-width:480px; margin:50px auto; }
 
 .error { color:var(--red); min-height:24px; font-size: 16px; margin-top: 5px; }
-.note { color:#8da4b0; font-size: 18px; }
+.note { color:#849da8; font-size: 18px; }
 
 .dashboard {
   display:grid;
-  grid-template-columns:340px minmax(0,1fr);
+  grid-template-columns:350px minmax(0,1fr);
   gap:20px;
 }
 
-.profile-top { display:flex; gap:12px; align-items:center; margin-bottom: 15px; }
+.profile-top { display:flex; gap:14px; align-items:center; margin-bottom: 18px; }
 
 .avatar {
-  width:65px;
-  height:65px;
+  width:70px;
+  height:70px;
   display:grid;
   place-items:center;
   background:var(--lime);
-  color:#121921;
+  color:#0d131a;
   font-family:'Press Start 2P';
   font-size: 18px;
-  border: 3px solid #31495b;
+  border: 3px solid #223647;
+  box-shadow: 4px 4px #000;
 }
 
 .stat {
@@ -148,15 +152,15 @@ label { display:block; margin:6px 0; font-size: 15px; }
   justify-content:space-between;
   gap:10px;
   border-top:1px dashed var(--line);
-  padding:8px 0;
+  padding:10px 0;
   font-size: 19px;
 }
 .stat b { color:var(--lime); font-weight:normal; text-align:right; }
 
 .server {
-  background:#0e1720;
+  background:#090f16;
   border:2px solid var(--line);
-  padding:18px;
+  padding:20px;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -165,39 +169,40 @@ label { display:block; margin:6px 0; font-size: 15px; }
 }
 
 .score-board {
-  background:#060a0f;
+  background:#05080c;
   border:3px solid var(--line);
-  padding:12px 20px;
+  padding:12px 24px;
   font:12px 'Press Start 2P';
   display: flex;
   gap: 15px;
   align-items: center;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
 }
-.score-board span { color:var(--lime); }
+.score-board span { color:var(--lime); text-shadow: 0 0 8px rgba(201,240,107,0.5); }
 
 .game-layout {
   display:grid;
   grid-template-columns:minmax(0,1fr) 280px;
-  gap:14px;
+  gap:16px;
 }
 
 #pitch {
   width:100%;
   height:auto;
   display:block;
-  border:4px solid #b8c894;
+  border:6px solid #1a2a1e;
   image-rendering:pixelated;
-  background:#3b8247;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  background:#2f693a;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.7), inset 0 0 50px rgba(0,0,0,0.3);
 }
 
-.sidebox { background:var(--panel); border:3px solid var(--line); padding:14px; margin-bottom:14px; }
-.key { display:inline-block; background:#080e12; border:2px solid #3e5a6f; padding:3px 6px; color:var(--lime); font-size: 15px; }
+.sidebox { background:var(--panel); border:3px solid var(--line); padding:16px; margin-bottom:14px; }
+.key { display:inline-block; background:#070b10; border:2px solid #2a4359; padding:4px 8px; color:var(--lime); font-size: 15px; font-weight:bold; }
 
 #playersList { max-height:280px; overflow:auto; font-size: 18px; }
-.status { min-height:24px; color:#8da4b0; margin-top:10px; font-size: 18px; }
+.status { min-height:24px; color:#849da8; margin-top:10px; font-size: 18px; }
 
-.footer { text-align:center; color:#5b7380; margin:25px; font-size: 16px; }
+.footer { text-align:center; color:#4a626e; margin:25px; font-size: 16px; }
 
 @media(max-width:800px) {
   .auth-grid, .dashboard, .game-layout { grid-template-columns:1fr; }
@@ -262,7 +267,6 @@ label { display:block; margin:6px 0; font-size: 15px; }
       <div class="stat"><span>Oynanan Maç</span><b id="statMatches">0</b></div>
       <div class="stat"><span>Goller</span><b id="statGoals">0</b></div>
       <div class="stat"><span>Asistler</span><b id="statAssists">0</b></div>
-      <div class="stat"><span>Favori Mevki</span><b id="statRole">Orta Saha</b></div>
       
       <div style="margin-top:15px;">
         <h3>PROFİLİ DÜZENLE</h3>
@@ -308,14 +312,15 @@ label { display:block; margin:6px 0; font-size: 15px; }
   <div class="game-layout">
     <div>
       <canvas id="pitch" width="1200" height="700"></canvas>
-      <div id="gameStatus" class="status">WASD ile hareket et | BOŞLUK (SPACE) ile rakipten top kap!</div>
+      <div id="gameStatus" class="status">WASD: Hareket | Top Sende İken SPACE: Şut | Top Sende Değilken SPACE: Top Kapma</div>
     </div>
 
     <aside>
       <div class="sidebox">
         <h3>KONTROLLER</h3>
         <p><span class="key">W A S D</span> Hareket et</p>
-        <p><span class="key">SPACE</span> Top Kapma (Tackle)</p>
+        <p><span class="key">SPACE</span> Top Sende: <b>Şut Çek</b></p>
+        <p><span class="key">SPACE</span> Top Rakipte: <b>Top Kap</b></p>
       </div>
       <div class="sidebox">
         <h3>SAHADAKİLER</h3>
@@ -336,7 +341,7 @@ let token = localStorage.getItem('mh_token') || '';
 let currentUser = null;
 let ws = null;
 let myId = null;
-let keys = { up:false, down:false, left:false, right:false, tackle:false };
+let keys = { up:false, down:false, left:false, right:false, space:false };
 
 function show(id) {
   ['authView','dashboardView','gameView'].forEach(v => $(v).classList.toggle('hidden', v !== id));
@@ -477,7 +482,7 @@ function connectWebSocket() {
   };
 }
 
-// CANVAS ÇİZİMİ & GRAFİKLER
+// GÜZELLEŞTİRİLMİŞ RETRO PİKSEL SAHA VE OYUNCU GRAFİKLERİ
 const canvas = $('pitch');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -485,17 +490,17 @@ ctx.imageSmoothingEnabled = false;
 function renderGame(state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Saha Çim Çizgileri
-  ctx.fillStyle = '#3b8247';
+  // Detaylı Çim Dokusu
+  ctx.fillStyle = '#2f693a';
   ctx.fillRect(40, 40, 1120, 620);
 
-  ctx.fillStyle = '#357740';
+  ctx.fillStyle = '#285d32';
   for (let x = 40; x < 1160; x += 80) {
     ctx.fillRect(x, 40, 40, 620);
   }
 
-  // Çizgiler ve Kaleler
-  ctx.strokeStyle = '#eef3d4';
+  // Saha Çizgileri & Kaleler
+  ctx.strokeStyle = '#e2ecd1';
   ctx.lineWidth = 4;
   ctx.strokeRect(40, 40, 1120, 620);
 
@@ -508,44 +513,59 @@ function renderGame(state) {
   ctx.arc(600, 350, 85, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Kale Alanları
-  ctx.strokeRect(40, 235, 40, 230);
-  ctx.strokeRect(1120, 235, 40, 230);
+  // Kale Alanları (Ceza Sahaları)
+  ctx.strokeRect(40, 230, 45, 240);
+  ctx.strokeRect(1115, 230, 45, 240);
 
-  // Oyuncular
+  // Oyuncular (Gelişmiş Gölge ve Stil)
   state.players.forEach(p => {
+    // Ayak Gölgesi
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 6, 16, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+
+    // Forma Tabanı
     ctx.beginPath();
     ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = p.jerseyColor;
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = p.id === myId ? '#c9f06b' : '#111';
+    ctx.strokeStyle = p.id === myId ? '#c9f06b' : '#0d131a';
     ctx.stroke();
 
-    // Gölge ve Numara
-    ctx.fillStyle = '#fff';
+    // Oyuncu Numarası
+    ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(p.jerseyNumber, p.x, p.y + 4);
 
+    // İsim Etiketi
     ctx.font = '12px monospace';
+    ctx.fillStyle = '#f4efcf';
     ctx.fillText(p.name, p.x, p.y - 24);
 
+    // Yavaşlama Durumu Göstergesi
     if (p.slowTimer > 0) {
-      ctx.fillStyle = '#ff7b7b';
+      ctx.fillStyle = '#ff6b6b';
       ctx.font = '10px monospace';
-      ctx.fillText('YAVAŞ!', p.x, p.y - 38);
+      ctx.fillText('YAVAŞLA! (-)', p.x, p.y - 38);
     }
   });
 
-  // Top Grafiği
+  // Top (Parlama Efektiyle)
   if (state.ball) {
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y + 3, 13, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+
     ctx.beginPath();
     ctx.arc(state.ball.x, state.ball.y, 13, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = '#1a2a1e';
     ctx.stroke();
   }
 
@@ -557,7 +577,7 @@ function renderGame(state) {
   $('timeLeft').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
 
   $('playersList').innerHTML = state.players.map(p => 
-    '<div style="color:' + (p.team === 'blue' ? '#4ca6ff' : '#ff7b7b') + '">' +
+    '<div style="color:' + (p.team === 'blue' ? '#3bb2ff' : '#ff6b6b') + '">' +
     (p.id === myId ? '▶ ' : '') + '#' + p.jerseyNumber + ' ' + p.name + ' (' + p.team.toUpperCase() + ')' +
     '</div>'
   ).join('');
@@ -568,7 +588,7 @@ const keyMap = { w:'up', ArrowUp:'up', s:'down', ArrowDown:'down', a:'left', Arr
 
 window.addEventListener('keydown', e => {
   if (e.key === ' ') {
-    keys.tackle = true;
+    keys.space = true;
     sendInput();
     e.preventDefault();
   }
@@ -580,7 +600,7 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keyup', e => {
   if (e.key === ' ') {
-    keys.tackle = false;
+    keys.space = false;
     sendInput();
   }
   if (keyMap[e.key]) {
@@ -592,7 +612,7 @@ window.addEventListener('keyup', e => {
 function sendInput() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type: 'input', ...keys }));
-  keys.tackle = false; // Tek Seferlik tetik
+  keys.space = false; // Tek seferlik tetik
 }
 
 checkSession();
@@ -602,7 +622,7 @@ checkSession();
 </html>`);
 });
 
-// KULLANICI VERİLERİ (user.json KALTICI KAYIT)
+// SUNUCU & VERİ TABANI YÖNETİMİ
 const DATA_DIR = process.env.USER_DATA_DIR || __dirname;
 const USERS_FILE = path.join(DATA_DIR, 'user.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -636,11 +656,11 @@ const MAX_PLAYERS = 12;
 const MATCH_TIME = 300;
 
 const FIELD = { x: 40, y: 40, width: 1120, height: 620 };
-const GOAL = { width: 40, height: 230 };
+const GOAL = { width: 45, height: 240 };
 const PLAYER_RADIUS = 18;
 const PLAYER_SPEED = 4.8;
 const BALL_RADIUS = 13;
-const BALL_MAX_SPEED = 16;
+const BALL_MAX_SPEED = 18;
 
 let blueScore = 0;
 let redScore = 0;
@@ -672,7 +692,7 @@ function publicUser(username, user) {
     profile: {
       displayName: profile.displayName || user.username || username,
       jerseyNumber: Number.isInteger(profile.jerseyNumber) ? profile.jerseyNumber : 10,
-      jerseyColor: profile.jerseyColor || '#299cff'
+      jerseyColor: profile.jerseyColor || '#3bb2ff'
     },
     stats
   };
@@ -707,7 +727,7 @@ app.post('/api/register', async (req, res) => {
     username: username.trim(),
     salt: hashed.salt,
     hash: hashed.hash,
-    profile: { displayName: username.trim(), jerseyNumber: 10, jerseyColor: '#299cff' },
+    profile: { displayName: username.trim(), jerseyNumber: 10, jerseyColor: '#3bb2ff' },
     stats: { matches: 0, goals: 0, assists: 0 }
   };
   await saveUsers();
@@ -733,7 +753,7 @@ app.put('/api/profile', auth, async (req, res) => {
   req.user.profile = {
     displayName: displayName.trim(),
     jerseyNumber: Math.max(1, Math.min(99, Number(jerseyNumber) || 10)),
-    jerseyColor: /^#[0-9a-fA-F]{6}$/.test(jerseyColor) ? jerseyColor : '#299cff'
+    jerseyColor: /^#[0-9a-fA-F]{6}$/.test(jerseyColor) ? jerseyColor : '#3bb2ff'
   };
   await saveUsers();
   res.json({ profile: req.user.profile });
@@ -810,21 +830,30 @@ wss.on('connection', ws => {
       player.keys.left = !!data.left;
       player.keys.right = !!data.right;
 
-      // TOP KAPMA (TACKLE / BOŞLUK TUŞU)
-      if (data.tackle && player.slowTimer <= 0) {
-        let success = false;
-        for (const other of players.values()) {
-          if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 60) {
-            if (other.hasBall) {
-              other.hasBall = false;
-              player.hasBall = true;
-              success = true;
-              break;
+      // TUŞ KONTROLÜ: TOP SENDE İSE ŞUT ÇEK, DEĞİLSE TOP KAPMA (TACKLE) YAP
+      if (data.space) {
+        if (player.hasBall) {
+          // ŞUT ÇEKME MEKANİĞİ
+          const shootAngle = player.team === 'blue' ? 0 : Math.PI;
+          ball.vx = (player.team === 'blue' ? 1 : -1) * 14;
+          ball.vy = (Math.random() - 0.5) * 4;
+          player.hasBall = false;
+        } else if (player.slowTimer <= 0) {
+          // TOP KAPMA (TACKLE) MEKANİĞİ
+          let success = false;
+          for (const other of players.values()) {
+            if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 65) {
+              if (other.hasBall) {
+                other.hasBall = false;
+                player.hasBall = true;
+                success = true;
+                break;
+              }
             }
           }
-        }
-        if (!success) {
-          player.slowTimer = 60; // 60 frame (1 saniye) yavaşlama cezası
+          if (!success) {
+            player.slowTimer = 60; // Boşa hamle yaparsa 1 saniye yavaşlar
+          }
         }
       }
     }
@@ -838,7 +867,7 @@ wss.on('connection', ws => {
   });
 });
 
-// FİZİK MOTORU & KONTROL MEKANİĞİ
+// FİZİK MOTORU
 setInterval(() => {
   for (const p of players.values()) {
     if (p.slowTimer > 0) p.slowTimer--;
@@ -858,9 +887,9 @@ setInterval(() => {
     p.x = Math.max(FIELD.x + PLAYER_RADIUS, Math.min(FIELD.x + FIELD.width - PLAYER_RADIUS, p.x + p.vx));
     p.y = Math.max(FIELD.y + PLAYER_RADIUS, Math.min(FIELD.y + FIELD.height - PLAYER_RADIUS, p.y + p.vy));
 
-    // EĞER OYUNCU TOPA SAHİPSE, TOPU YANINDA TAŞI
+    // TOP SENDE İSE YANINDA TAŞI
     if (p.hasBall) {
-      ball.x = p.x + (p.team === 'blue' ? 18 : -18);
+      ball.x = p.x + (p.team === 'blue' ? 20 : -20);
       ball.y = p.y;
       ball.vx = p.vx;
       ball.vy = p.vy;
@@ -871,7 +900,6 @@ setInterval(() => {
   for (const p of players.values()) {
     const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
     if (dist < PLAYER_RADIUS + BALL_RADIUS) {
-      // Topu ayağına alma
       for (const other of players.values()) other.hasBall = false;
       p.hasBall = true;
       ball.vx = p.vx * 1.2;
@@ -882,13 +910,13 @@ setInterval(() => {
   if (![...players.values()].some(p => p.hasBall)) {
     ball.x += ball.vx;
     ball.y += ball.vy;
-    ball.vx *= 0.98;
-    ball.vy *= 0.98;
+    ball.vx *= 0.985;
+    ball.vy *= 0.985;
   }
 
-  // Duvar ve Kaleler
-  if (ball.y - BALL_RADIUS < FIELD.y) { ball.y = FIELD.y + BALL_RADIUS; ball.vy *= -0.8; }
-  if (ball.y + BALL_RADIUS > FIELD.y + FIELD.height) { ball.y = FIELD.y + FIELD.height - BALL_RADIUS; ball.vy *= -0.8; }
+  // DUVARLAR VE GOLLER
+  if (ball.y - BALL_RADIUS < FIELD.y) { ball.y = FIELD.y + BALL_RADIUS; ball.vy *= -0.85; }
+  if (ball.y + BALL_RADIUS > FIELD.y + FIELD.height) { ball.y = FIELD.y + FIELD.height - BALL_RADIUS; ball.vy *= -0.85; }
 
   const goalTop = FIELD.y + FIELD.height / 2 - GOAL.height / 2;
   const goalBot = FIELD.y + FIELD.height / 2 + GOAL.height / 2;
@@ -899,7 +927,7 @@ setInterval(() => {
       resetPlayers();
       return;
     }
-    ball.x = FIELD.x + BALL_RADIUS; ball.vx *= -0.8;
+    ball.x = FIELD.x + BALL_RADIUS; ball.vx *= -0.85;
   }
   if (ball.x + BALL_RADIUS > FIELD.x + FIELD.width) {
     if (ball.y > goalTop && ball.y < goalBot) {
@@ -907,7 +935,7 @@ setInterval(() => {
       resetPlayers();
       return;
     }
-    ball.x = FIELD.x + FIELD.width - BALL_RADIUS; ball.vx *= -0.8;
+    ball.x = FIELD.x + FIELD.width - BALL_RADIUS; ball.vx *= -0.85;
   }
 }, 1000 / 60);
 
