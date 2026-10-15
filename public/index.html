@@ -4,17 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mini Haxball Pixel League</title>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-  --bg:#101820;
-  --panel:#192b37;
-  --line:#3e5868;
+  --bg:#0c1117;
+  --panel:#16222d;
+  --line:#31495b;
   --cream:#f4efcf;
   --lime:#c9f06b;
   --cyan:#64dce8;
+  --red:#ff7b7b;
+  --blue:#4ca6ff;
 }
 
 *, *::before, *::after { box-sizing:border-box; }
@@ -23,34 +24,41 @@ body {
   margin:0;
   background:var(--bg);
   color:var(--cream);
-  font:22px 'VT323',monospace;
+  font:20px 'VT323',monospace;
 }
 
-button,input { font:inherit; }
+button, input { font:inherit; }
 
 button {
   cursor:pointer;
   border:0;
   background:var(--lime);
-  color:#18212a;
+  color:#121921;
   padding:12px;
   font:10px 'Press Start 2P';
   box-shadow:4px 4px #718e39;
+  transition: transform 0.08s;
 }
-
-button:disabled { opacity:.5; }
+button:active { transform: translate(2px, 2px); box-shadow:2px 2px #718e39; }
+button:disabled { opacity:.5; cursor:not-allowed; }
 
 .secondary {
-  background:#304754;
+  background:#263c4a;
   color:var(--cream);
-  box-shadow:4px 4px #090f14;
+  box-shadow:4px 4px #080e12;
+}
+.secondary:active { box-shadow:2px 2px #080e12; }
+
+.danger {
+  background:var(--red);
+  color:#121921;
+  box-shadow:4px 4px #9c3f3f;
 }
 
 .hidden { display:none!important; }
+.wrap { max-width:1300px; margin:auto; padding:20px; }
 
-.wrap { max-width:1250px; margin:auto; padding:20px; }
-
-.top,.game-head {
+.top, .game-head {
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -60,13 +68,14 @@ button:disabled { opacity:.5; }
 }
 
 .brand {
-  font:20px/1.7 'Press Start 2P';
+  font:16px/1.8 'Press Start 2P';
   color:var(--lime);
+  text-shadow: 2px 2px #000;
 }
 
-.tag,h2,h3 {
+.tag, h2, h3 {
   font-family:'Press Start 2P';
-  font-size:11px;
+  font-size:10px;
   line-height:1.8;
   color:var(--cyan);
 }
@@ -75,44 +84,45 @@ button:disabled { opacity:.5; }
   background:var(--panel);
   border:3px solid var(--line);
   padding:20px;
-  box-shadow:5px 5px #090f14;
+  box-shadow:6px 6px #080e12;
+  margin-bottom: 20px;
 }
 
 input {
   width:100%;
   padding:12px;
-  background:#0d171e;
+  background:#090e13;
   color:white;
-  border:2px solid #496271;
+  border:2px solid #3e5a6f;
+  margin-bottom: 12px;
+  font-size: 20px;
 }
 
-label { display:block; margin:10px 0; }
+label { display:block; margin:6px 0; font-size: 15px; }
 
-.auth-grid {
-  max-width:480px;
-  margin:65px auto;
-}
+.auth-grid { max-width:480px; margin:40px auto; }
 
-.error { color:#ff8585; min-height:24px; }
-
-.note { color:#a0b5bf; }
+.error { color:var(--red); min-height:24px; font-size: 16px; margin-top: 5px; }
+.note { color:#8da4b0; font-size: 18px; }
 
 .dashboard {
   display:grid;
-  grid-template-columns:300px minmax(0,1fr);
+  grid-template-columns:340px minmax(0,1fr);
   gap:20px;
 }
 
-.profile-top { display:flex; gap:12px; align-items:center; }
+.profile-top { display:flex; gap:12px; align-items:center; margin-bottom: 15px; }
 
 .avatar {
-  width:60px;
-  height:60px;
+  width:65px;
+  height:65px;
   display:grid;
   place-items:center;
   background:var(--lime);
-  color:#15202a;
+  color:#121921;
   font-family:'Press Start 2P';
+  font-size: 18px;
+  border: 3px solid #31495b;
 }
 
 .stat {
@@ -120,13 +130,13 @@ label { display:block; margin:10px 0; }
   justify-content:space-between;
   gap:10px;
   border-top:1px dashed var(--line);
-  padding:10px 0;
+  padding:8px 0;
+  font-size: 19px;
 }
-
 .stat b { color:var(--lime); font-weight:normal; text-align:right; }
 
 .server {
-  background:#101c24;
+  background:#0e1720;
   border:2px solid var(--line);
   padding:18px;
   display:flex;
@@ -136,30 +146,20 @@ label { display:block; margin:10px 0; }
   margin:12px 0;
 }
 
-.teams { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-
-.team { padding:14px; background:#111e26; border:3px solid #4aa4f5; }
-.team.orange { border-color:#ff9859; }
-
-.slot { padding:6px; border-bottom:1px dashed var(--line); }
-
-.role-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
-
-.role { background:#15232c; padding:10px; border:2px solid var(--line); }
-.role h3 { font-size:9px; }
-
-.score {
-  background:#071016;
+.score-board {
+  background:#060a0f;
   border:3px solid var(--line);
-  padding:14px;
-  font:14px 'Press Start 2P';
+  padding:12px 20px;
+  font:12px 'Press Start 2P';
+  display: flex;
+  gap: 15px;
+  align-items: center;
 }
-
-.score span { color:var(--lime); }
+.score-board span { color:var(--lime); }
 
 .game-layout {
   display:grid;
-  grid-template-columns:minmax(0,1fr) 230px;
+  grid-template-columns:minmax(0,1fr) 280px;
   gap:14px;
 }
 
@@ -167,83 +167,26 @@ label { display:block; margin:10px 0; }
   width:100%;
   height:auto;
   display:block;
-  border:4px solid #d5e0b1;
+  border:4px solid #b8c894;
   image-rendering:pixelated;
-  background:#44864c;
+  background:#3b8247;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
-.sidebox { background:var(--panel); border:3px solid var(--line); padding:12px; margin-bottom:12px; }
+.sidebox { background:var(--panel); border:3px solid var(--line); padding:14px; margin-bottom:14px; }
+.key { display:inline-block; background:#080e12; border:2px solid #3e5a6f; padding:3px 6px; color:var(--lime); font-size: 15px; }
 
-.key { display:inline-block; background:#081219; border:2px solid #506773; padding:4px; color:var(--lime); }
+#playersList { max-height:280px; overflow:auto; font-size: 18px; }
+.status { min-height:24px; color:#8da4b0; margin-top:10px; font-size: 18px; }
 
-#playersList { max-height:230px; overflow:auto; }
-
-.staminaWrap {
-  margin:12px 0;
-  background:#071016;
-  border:2px solid #b9c7a4;
-  height:25px;
-  position:relative;
-}
-
-#staminaBar { height:100%; width:100%; background:#c9f06b; }
-
-#staminaText {
-  position:absolute;
-  inset:0;
-  text-align:center;
-  font:9px/21px 'Press Start 2P';
-  color:#101820;
-}
-
-.status { min-height:24px; color:#a0b5bf; margin-top:10px; }
-
-.mobile { display:none; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
-
-.pitch-wrap { position:relative; }
-
-.goal-overlay {
-  position:absolute;
-  inset:0;
-  z-index:5;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#071016d9;
-  text-align:center;
-  padding:20px;
-}
-
-.goal-card {
-  background:#142630;
-  border:4px solid var(--lime);
-  padding:24px;
-  max-width:520px;
-  width:95%;
-}
-
-.goal-word { font:clamp(28px,5vw,48px) 'Press Start 2P'; color:var(--lime); margin-bottom:22px; }
-
-.assist-word { font:clamp(15px,2vw,20px) 'Press Start 2P'; color:var(--cyan); line-height:1.8; }
-
-.footer { text-align:center; color:#728995; margin:25px; }
+.footer { text-align:center; color:#5b7380; margin:25px; font-size: 16px; }
 
 @media(max-width:800px) {
-  .auth-grid,.dashboard,.game-layout { grid-template-columns:1fr; }
-  .mobile { display:grid; }
+  .auth-grid, .dashboard, .game-layout { grid-template-columns:1fr; }
   .wrap { padding:10px; }
-  .panel { padding:13px; }
-}
-
-@media(max-width:450px) {
-  .teams { grid-template-columns:1fr; }
-  .role-grid { grid-template-columns:1fr; }
-  .brand { font-size:14px; }
-  .server { align-items:flex-start; flex-direction:column; }
 }
 </style>
 </head>
-
 <body>
 <div class="wrap">
 
@@ -252,35 +195,39 @@ label { display:block; margin:10px 0; }
     <div class="tag">ONLINE FOOTBALL / SEASON 02</div>
     <div class="brand">MINI HAXBALL<br>PIXEL LEAGUE</div>
   </div>
-  <div id="headerRight" class="tag">MİSAFİR MODU</div>
+  <div id="headerRight" class="tag">GİRİŞ YAPILMADI</div>
 </header>
 
-<!-- MİSAFİR GİRİŞİ -->
+<!-- GİRİŞ / KAYIT EKRANI -->
 <section id="authView">
   <div class="auth-grid">
     <div class="panel">
-      <h2>MİSAFİR OLARAK GİR</h2>
-      <p class="note">Hesap açmana gerek yok. İsmini yaz ve hemen oyna!</p>
-
-      <form id="guestForm">
-        <label>Görünen ismin</label>
-        <input
-          id="guestName"
-          name="displayName"
-          placeholder="Örn. Futbolcu10"
-          minlength="2"
-          maxlength="18"
-          required
-          autocomplete="nickname"
-        >
-        <div id="loginError" class="error"></div>
-        <button id="guestButton" type="submit">OYUNA BAŞLA</button>
+      <h2>HESAP GİRİŞİ / KAYIT</h2>
+      <p class="note">Kayıt ol veya mevcut hesabınla giriş yap.</p>
+      
+      <form id="authForm">
+        <label>Kullanıcı Adı (3-16 karakter)</label>
+        <input id="authUsername" placeholder="Kullanıcı adın" minlength="3" maxlength="16" required autocomplete="username">
+        
+        <label>Şifre (En az 8 karakter)</label>
+        <input id="authPassword" type="password" placeholder="Şifren" minlength="8" required autocomplete="current-password">
+        
+        <div id="authError" class="error"></div>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+          <button type="submit" style="flex:1;">GİRİŞ YAP</button>
+          <button type="button" id="registerBtn" class="secondary" style="flex:1;">KAYIT OL</button>
+        </div>
       </form>
+      
+      <div style="margin-top:20px; border-top:1px dashed var(--line); padding-top:15px; text-align:center;">
+        <button type="button" id="guestBtn" class="secondary" style="width:100%;">MİSAFİR OLARAK DEVAM ET</button>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- OYUNCU PANELİ -->
+<!-- OYUNCU DASHBOARD / PROFİL & İSTATİSTİKLER -->
 <section id="dashboardView" class="hidden">
   <div class="dashboard">
     <aside class="panel">
@@ -288,128 +235,69 @@ label { display:block; margin:10px 0; }
       <div class="profile-top">
         <div id="avatar" class="avatar">10</div>
         <div>
-          <div id="displayName"></div>
-          <div class="tag">MİSAFİR OYUNCU</div>
+          <div id="displayProfileName" style="font-family:'Press Start 2P'; font-size:10px; color:var(--lime);"></div>
+          <div class="tag">KAYITLI OYUNCU</div>
         </div>
       </div>
 
-      <div class="stat"><span>Görünen isim</span><b id="profileName"></b></div>
-      <div class="stat"><span>Forma no</span><b id="profileNumber"></b></div>
-      <div class="stat"><span>Oynanan maç</span><b id="myMatches">0</b></div>
-      <div class="stat"><span>Gol</span><b id="myGoals">0</b></div>
-      <div class="stat"><span>Asist</span><b id="myAssists">0</b></div>
+      <div class="stat"><span>Kullanıcı Adı</span><b id="profileUsername"></b></div>
+      <div class="stat"><span>Oynanan Maç</span><b id="statMatches">0</b></div>
+      <div class="stat"><span>Goller</span><b id="statGoals">0</b></div>
+      <div class="stat"><span>Asistler</span><b id="statAssists">0</b></div>
+      
+      <div style="margin-top:15px;">
+        <h3>PROFİLİ DÜZENLE</h3>
+        <label>Sahadaki İsim</label>
+        <input id="editDisplayName" maxlength="16">
+        <label>Forma Numarası (1-99)</label>
+        <input id="editJerseyNum" type="number" min="1" max="99">
+        <label>Forma Rengi</label>
+        <input id="editJerseyColor" type="color">
+        <button type="button" id="saveProfileBtn" style="width:100%; margin-top:5px;">GÜNCELLE</button>
+        <div id="profileError" class="error"></div>
+      </div>
 
-      <button class="secondary" id="logoutBtn" style="width:100%;margin-top:12px">İSİM DEĞİŞTİR</button>
+      <button class="secondary danger" id="logoutBtn" style="width:100%; margin-top:20px">ÇIKIŞ YAP</button>
     </aside>
 
     <main class="panel">
       <h2>SUNUCU LİSTESİ</h2>
       <div class="server">
         <div>
-          <div class="tag">EU / PUBLIC</div>
+          <div class="tag">EU / PUBLIC ARENA</div>
           <h2>PIXEL ARENA #01</h2>
-          <div class="note">● AÇIK · 6v6 · 5 dakika</div>
+          <div class="note" id="serverPlayerCount">● AÇIK · 0/12 OYUNCU</div>
         </div>
         <button id="joinServerBtn">SUNUCUYA GİR</button>
       </div>
-      <div id="dashboardError" class="error"></div>
     </main>
   </div>
 </section>
 
-<!-- LOBİ -->
-<section id="lobbyView" class="hidden">
-  <div class="panel">
-    <div class="game-head">
-      <h2>TAKIMINI VE MEVKİNİ SEÇ</h2>
-      <button id="backLobbyBtn" class="secondary">GERİ DÖN</button>
-    </div>
-
-    <div class="teams">
-      <div class="team">
-        <h3 style="color:#79bdff">MAVİ TAKIM</h3>
-        <div id="blueSlots"></div>
-        <div class="role-grid">
-          <div class="role"><h3>DEFANS · 2</h3><button data-team="0" data-role="DEF">SEÇ</button></div>
-          <div class="role"><h3>ORTA SAHA · 3</h3><button data-team="0" data-role="MID">SEÇ</button></div>
-          <div class="role"><h3>FORVET · 1</h3><button data-team="0" data-role="FWD">SEÇ</button></div>
-        </div>
-      </div>
-
-      <div class="team orange">
-        <h3 style="color:#ffad72">TURUNCU TAKIM</h3>
-        <div id="orangeSlots"></div>
-        <div class="role-grid">
-          <div class="role"><h3>DEFANS · 2</h3><button data-team="1" data-role="DEF">SEÇ</button></div>
-          <div class="role"><h3>ORTA SAHA · 3</h3><button data-team="1" data-role="MID">SEÇ</button></div>
-          <div class="role"><h3>FORVET · 1</h3><button data-team="1" data-role="FWD">SEÇ</button></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="lobbyStatus" class="status">Takım ve mevki seç.</div>
-    <button id="enterPitchBtn">SAHAYA GEÇ</button>
-  </div>
-</section>
-
-<!-- MAÇ -->
+<!-- MAÇ OYUN EKRANI -->
 <section id="gameView" class="hidden">
   <div class="game-head">
-    <div>
-      <div class="tag">PIXEL ARENA / LIVE MATCH</div>
-      <div class="score"><span id="blueScore">0</span> MAVİ — <span id="orangeScore">0</span> TURUNCU</div>
+    <div class="score-board">
+      <div>MAVİ: <span id="blueScore">0</span></div>
+      <div>—</div>
+      <div>KIRMIZI: <span id="redScore">0</span></div>
     </div>
-    <div class="score">SÜRE <span id="timeLeft">05:00</span></div>
+    <div class="score-board">SÜRE <span id="timeLeft">05:00</span></div>
     <button class="secondary" id="leaveGameBtn">LOBİYE DÖN</button>
   </div>
 
   <div class="game-layout">
     <div>
-      <div class="pitch-wrap">
-        <canvas id="pitch" width="1000" height="600"></canvas>
-        <div id="goalOverlay" class="goal-overlay hidden">
-          <div class="goal-card">
-            <div class="goal-word">GOOOL!</div>
-            <div id="goalScorer" class="assist-word">Golü atan: -</div>
-            <div id="goalAssist" class="assist-word">Asist: -</div>
-            <div id="goalTeam" class="tag">TAKIM</div>
-            <p id="goalCountdown" class="note">Santra bekleniyor</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="staminaWrap">
-        <div id="staminaBar"></div>
-        <div id="staminaText">STAMINA 100%</div>
-      </div>
-
-      <div class="mobile">
-        <button data-key="up">▲</button>
-        <button data-key="kick">ŞUT</button>
-        <button data-key="pass">PAS</button>
-        <button data-key="left">◀</button>
-        <button data-key="down">▼</button>
-        <button data-key="right">▶</button>
-        <button data-key="tackle" class="secondary" style="grid-column:span 3">TOP KAP</button>
-      </div>
-
-      <div id="gameStatus" class="status">Bağlantı bekleniyor.</div>
+      <canvas id="pitch" width="1200" height="700"></canvas>
+      <div id="gameStatus" class="status">WASD ile hareket et | BOŞLUK (SPACE) ile rakipten top kap!</div>
     </div>
 
     <aside>
       <div class="sidebox">
-        <h3>TAKIM RENKLERİ</h3>
-        <p style="color:#79bdff">■ Mavi takım</p>
-        <p style="color:#ffad72">■ Turuncu takım</p>
-      </div>
-
-      <div class="sidebox">
         <h3>KONTROLLER</h3>
-        <p><span class="key">W A S D</span> / Oklar: Hareket</p>
-        <p><span class="key">SPACE</span> Şut</p>
-        <p><span class="key">SHIFT</span> Pas</p>
+        <p><span class="key">W A S D</span> Hareket et</p>
+        <p><span class="key">SPACE</span> Top Kapma (Tackle)</p>
       </div>
-
       <div class="sidebox">
         <h3>SAHADAKİLER</h3>
         <div id="playersList"></div>
@@ -421,469 +309,5 @@ label { display:block; margin:10px 0; }
 <div class="footer">MINI HAXBALL PIXEL LEAGUE</div>
 </div>
 
-<script>
-(() => {
-'use strict';
-
-const $ = id => document.getElementById(id);
-const views = ['authView','dashboardView','lobbyView','gameView'];
-const roleNames = {DEF:'Defans',MID:'Orta saha',FWD:'Forvet'};
-
-let user = null;
-let ws = null;
-let myId = null;
-let state = null;
-let selected = false;
-let keys = {};
-let actionQueued = null;
-let lastSend = 0;
-let lastGoalId = null;
-let autoJoin = false;
-
-function show(id) {
-  views.forEach(v => $(v).classList.toggle('hidden',v !== id));
-}
-
-function message(id,msg) {
-  $(id).textContent = msg || '';
-}
-
-function makeGuest(name) {
-  name = String(name || '').trim();
-
-  if (name.length < 2 || name.length > 18) {
-    throw new Error('İsim 2-18 karakter arasında olmalı.');
-  }
-
-  if (/[<>]/.test(name)) {
-    throw new Error('İsimde < veya > karakterlerini kullanamazsın.');
-  }
-
-  return {
-    displayName:name,
-    username:'guest_' + Math.random().toString(36).slice(2,10),
-    number:Math.floor(Math.random()*99)+1,
-    stats:{matches:0,goals:0,assists:0}
-  };
-}
-
-function renderOwnProfile() {
-  $('avatar').textContent = String(user.number).padStart(2,'0');
-  $('displayName').textContent = user.displayName;
-  $('profileName').textContent = user.displayName;
-  $('profileNumber').textContent = '#' + user.number;
-  $('headerRight').textContent = 'MİSAFİR: ' + user.displayName;
-}
-
-function startGuest(name) {
-  try {
-    user = makeGuest(name);
-    sessionStorage.setItem('mh_guest',JSON.stringify(user));
-    renderOwnProfile();
-    message('loginError','');
-    show('dashboardView');
-
-    if (autoJoin) {
-      autoJoin = false;
-      connect();
-      show('lobbyView');
-    }
-  } catch (e) {
-    message('loginError',e.message);
-  }
-}
-
-$('guestForm').addEventListener('submit',e => {
-  e.preventDefault();
-  startGuest($('guestName').value);
-});
-
-$('joinServerBtn').onclick = () => {
-  connect();
-  show('lobbyView');
-};
-
-$('logoutBtn').onclick = () => {
-  leave();
-  user = null;
-  sessionStorage.removeItem('mh_guest');
-  $('guestName').value = '';
-  show('authView');
-};
-
-$('backLobbyBtn').onclick = () => {
-  leave();
-  show('dashboardView');
-};
-
-$('enterPitchBtn').onclick = () => {
-  if (!selected) {
-    message('lobbyStatus','Önce takım ve mevki seç.');
-    return;
-  }
-  show('gameView');
-};
-
-$('leaveGameBtn').onclick = () => {
-  keys = {};
-  actionQueued = null;
-  show('lobbyView');
-};
-
-document.querySelectorAll('[data-team][data-role]').forEach(b => {
-  b.onclick = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      message('lobbyStatus','Sunucu bağlantısı bekleniyor.');
-      return;
-    }
-
-    ws.send(JSON.stringify({
-      type:'select',
-      team:Number(b.dataset.team),
-      role:b.dataset.role
-    }));
-  };
-});
-
-function connect() {
-  if (!user) {
-    show('authView');
-    return;
-  }
-
-  if (ws && (
-    ws.readyState === WebSocket.OPEN ||
-    ws.readyState === WebSocket.CONNECTING
-  )) return;
-
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(protocol + '//' + location.host);
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({
-      type:'auth',
-      guest:true,
-      username:user.username,
-      displayName:user.displayName,
-      number:user.number
-    }));
-
-    message('lobbyStatus','Sunucuya bağlanılıyor...');
-  };
-
-  ws.onmessage = e => {
-    let m;
-
-    try { m = JSON.parse(e.data); }
-    catch { return; }
-
-    if (m.type === 'error') {
-      message('lobbyStatus',m.message || 'Bağlantı hatası.');
-      message('gameStatus',m.message || 'Bağlantı hatası.');
-      return;
-    }
-
-    if (m.type === 'joined') {
-      myId = m.id;
-      message('lobbyStatus','Bağlandın! Takım ve mevki seç.');
-    }
-
-    if (m.type === 'selected') {
-      selected = true;
-      message(
-        'lobbyStatus',
-        (m.team === 0 ? 'Mavi' : 'Turuncu') +
-        ' takımında ' + (m.roleName || roleNames[m.role] || '') +
-        ' seçtin.'
-      );
-    }
-
-    if (m.type === 'state') {
-      state = m;
-      renderLobby(m);
-      renderGame(m);
-
-      if (m.world && m.world.goalEvent) {
-        showGoal(m.world.goalEvent);
-      } else {
-        $('goalOverlay').classList.add('hidden');
-        lastGoalId = null;
-      }
-    }
-  };
-
-  ws.onclose = () => {
-    message('gameStatus','Bağlantı kesildi.');
-    message('lobbyStatus','Bağlantı kesildi. Sunucu desteğini kontrol et.');
-  };
-
-  ws.onerror = () => {
-    message('lobbyStatus','Sunucu bağlantı hatası.');
-  };
-}
-
-function leave() {
-  if (ws) {
-    ws.onclose = null;
-    ws.close();
-    ws = null;
-  }
-
-  myId = null;
-  selected = false;
-  state = null;
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g,c => ({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#39;'
-  })[c]);
-}
-
-function renderLobby(s) {
-  if (!Array.isArray(s.players)) return;
-
-  const blue = s.players.filter(p => p.team === 0);
-  const orange = s.players.filter(p => p.team === 1);
-
-  function slots(list) {
-    return ['DEF','MID','FWD'].map(role => {
-      let html = '';
-
-      for (let i=0;i<({DEF:2,MID:3,FWD:1}[role]);i++) {
-        const p = list.filter(x => x.role === role)[i];
-
-        html += '<div class="slot">' +
-          (p ? '#' + p.number + ' ' + esc(p.name) : '□ BOŞ') +
-          (p && p.id === myId ? ' (SEN)' : '') +
-          '</div>';
-      }
-
-      return '<h3>' + roleNames[role] + '</h3>' + html;
-    }).join('');
-  }
-
-  $('blueSlots').innerHTML = slots(blue);
-  $('orangeSlots').innerHTML = slots(orange);
-  $('headerRight').textContent = s.players.length + '/12 OYUNCU';
-}
-
-const canvas = $('pitch');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-
-function rect(x,y,w,h,c) {
-  ctx.fillStyle = c;
-  ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
-}
-
-function drawPitch(s) {
-  ctx.clearRect(0,0,1000,600);
-
-  rect(0,0,1000,600,'#387f45');
-
-  for (let y=20;y<580;y+=40) {
-    for (let x=20;x<980;x+=40) {
-      rect(x,y,40,40,((x/40+y/40)%2===0)?'#4d9652':'#43874a');
-    }
-  }
-
-  ctx.strokeStyle='#e5edc5';
-  ctx.lineWidth=4;
-  ctx.strokeRect(20,20,960,560);
-
-  ctx.beginPath();
-  ctx.moveTo(500,20);
-  ctx.lineTo(500,580);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(500,300,76,0,Math.PI*2);
-  ctx.stroke();
-
-  ctx.strokeRect(20,190,145,220);
-  ctx.strokeRect(835,190,145,220);
-  ctx.strokeRect(0,246,20,108);
-  ctx.strokeRect(980,246,20,108);
-
-  if (!Array.isArray(s.players)) return;
-
-  for (const p of s.players) {
-    if (p.team == null) continue;
-
-    const x = Math.round(p.x);
-    const y = Math.round(p.y);
-    const blue = p.team === 0;
-
-    rect(x-10,y+10,20,5,'#25402b');
-    rect(x-7,y+5,5,8,'#20242b');
-    rect(x+2,y+5,5,8,'#20242b');
-    rect(x-9,y-8,18,15,blue?'#56b7ff':'#ff9859');
-    rect(x-6,y-14,12,7,'#efc49b');
-    rect(x-6,y-16,12,3,'#342d29');
-
-    if (p.id === myId) {
-      rect(x-14,y-25,28,2,'#d9ff73');
-      rect(x-14,y+16,28,2,'#d9ff73');
-    }
-
-    ctx.textAlign='center';
-    ctx.fillStyle='#fff';
-    ctx.font='bold 12px monospace';
-    ctx.fillText(String(p.number),x,y+2);
-    ctx.font='12px monospace';
-    ctx.fillText(String(p.name || '').slice(0,13),x,y-22);
-  }
-
-  const b = s.ball;
-
-  if (b) {
-    rect(b.x-7,b.y-7,14,14,'#fff7d8');
-    rect(b.x-3,b.y-3,6,6,'#17232b');
-    rect(b.x-1,b.y-7,2,14,'#17232b');
-    rect(b.x-7,b.y-1,14,2,'#17232b');
-  }
-}
-
-function showGoal(g) {
-  if (lastGoalId !== g.expiresAt) {
-    lastGoalId = g.expiresAt;
-
-    $('goalScorer').textContent = g.scorer
-      ? 'Golü atan: ' + g.scorer.name
-      : 'Golü atan: Belirlenemedi';
-
-    $('goalAssist').textContent = g.assist
-      ? 'Asist: ' + g.assist.name
-      : 'Asist: Yok';
-
-    $('goalTeam').textContent =
-      g.team === 0 ? 'MAVİ TAKIM GOL ATTI' : 'TURUNCU TAKIM GOL ATTI';
-  }
-
-  const left = Math.max(0,Math.ceil((g.expiresAt-Date.now())/1000));
-
-  $('goalCountdown').textContent = left > 0
-    ? 'Santra ' + left + ' saniye içinde'
-    : 'Santra yapılıyor';
-
-  $('goalOverlay').classList.remove('hidden');
-}
-
-function renderGame(s) {
-  if (!s.world) return;
-
-  $('blueScore').textContent = s.world.score?.[0] ?? 0;
-  $('orangeScore').textContent = s.world.score?.[1] ?? 0;
-
-  const secs = Math.ceil((s.world.remaining || 0)/1000);
-
-  $('timeLeft').textContent =
-    String(Math.floor(secs/60)).padStart(2,'0') + ':' +
-    String(secs%60).padStart(2,'0');
-
-  const me = s.players?.find(p => p.id === myId);
-  const stamina = me ? Math.max(0,Math.min(100,me.stamina ?? 100)) : 100;
-
-  $('staminaBar').style.width = stamina + '%';
-  $('staminaText').textContent = 'STAMINA ' + Math.round(stamina) + '%';
-
-  $('playersList').innerHTML = (s.players || []).map(p =>
-    '<div style="color:' +
-    (p.team===0?'#79bdff':p.team===1?'#ffb37a':'#ddd') +
-     '">' +
-    (p.id===myId?'▶ ':'') +
-    '#' + p.number + ' ' + esc(p.name) + ' ' +
-    (p.role ? roleNames[p.role] : 'Mevki seçmedi') +
-    (p.hasBall ? ' ⚽' : '') +
-    '</div>'
-  ).join('');
-
-  drawPitch(s);
-}
-
-const keyMap = {
-  w:'up',ArrowUp:'up',
-  s:'down',ArrowDown:'down',
-  a:'left',ArrowLeft:'left',
-  d:'right',ArrowRight:'right'
-};
-
-window.addEventListener('keydown',e => {
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
-    e.preventDefault();
-  }
-
-  if (keyMap[e.key]) keys[keyMap[e.key]] = true;
-  if (e.key === ' ') actionQueued = 'kick';
-  if (e.key === 'Shift') actionQueued = 'pass';
-});
-
-window.addEventListener('keyup',e => {
-  if (keyMap[e.key]) keys[keyMap[e.key]] = false;
-});
-
-window.addEventListener('blur',() => { keys = {}; });
-
-document.querySelectorAll('[data-key]').forEach(b => {
-  const k = b.dataset.key;
-
-  b.addEventListener('pointerdown',e => {
-    e.preventDefault();
-
-    if (['up','down','left','right'].includes(k)) keys[k] = true;
-    else if (k === 'kick') actionQueued = 'kick';
-    else if (k === 'pass') actionQueued = 'pass';
-    else if (k === 'tackle') actionQueued = 'tackle';
-  });
-
-  const up = e => {
-    e.preventDefault();
-    if (['up','down','left','right'].includes(k)) keys[k] = false;
-  };
-
-  b.addEventListener('pointerup',up);
-  b.addEventListener('pointercancel',up);
-  b.addEventListener('pointerleave',up);
-});
-
-setInterval(() => {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !myId) return;
-  if (Date.now()-lastSend < 30) return;
-
-  lastSend = Date.now();
-
-  ws.send(JSON.stringify({
-    type:'input',
-    up:!!keys.up,
-    down:!!keys.down,
-    left:!!keys.left,
-    right:!!keys.right,
-    action:actionQueued
-  }));
-
-  actionQueued = null;
-},30);
-
-try {
-  const saved = JSON.parse(sessionStorage.getItem('mh_guest') || 'null');
-
-  if (saved && saved.displayName) {
-    user = saved;
-    renderOwnProfile();
-    autoJoin = true;
-    connect();
-    show('lobbyView');
-  }
-} catch {
-  sessionStorage.removeItem('mh_guest');
-}
-
-})();
-</script>
 </body>
 </html>
