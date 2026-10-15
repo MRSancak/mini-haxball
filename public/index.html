@@ -17,7 +17,7 @@
   --cyan:#64dce8;
 }
 
-* { box-sizing:border-box; }
+*, *::before, *::after { box-sizing:border-box; }
 
 body {
   margin:0;
@@ -493,7 +493,6 @@ function startGuest(name) {
   }
 }
 
-/* Misafir girişi: kullanıcı adı ve şifre yok. */
 $('guestForm').addEventListener('submit',e => {
   e.preventDefault();
   startGuest($('guestName').value);
@@ -561,10 +560,6 @@ function connect() {
   ws = new WebSocket(protocol + '//' + location.host);
 
   ws.onopen = () => {
-    /*
-      Sunucunun guest_auth mesajını desteklemesi gerekir.
-      username alanı misafir oturumunu tanımlamak için gönderilir.
-    */
     ws.send(JSON.stringify({
       type:'auth',
       guest:true,
@@ -795,13 +790,12 @@ function renderGame(s) {
   const stamina = me ? Math.max(0,Math.min(100,me.stamina ?? 100)) : 100;
 
   $('staminaBar').style.width = stamina + '%';
-
   $('staminaText').textContent = 'STAMINA ' + Math.round(stamina) + '%';
 
   $('playersList').innerHTML = (s.players || []).map(p =>
     '<div style="color:' +
     (p.team===0?'#79bdff':p.team===1?'#ffb37a':'#ddd') +
-    '">' +
+     '">' +
     (p.id===myId?'▶ ':'') +
     '#' + p.number + ' ' + esc(p.name) + ' ' +
     (p.role ? roleNames[p.role] : 'Mevki seçmedi') +
@@ -875,7 +869,6 @@ setInterval(() => {
   actionQueued = null;
 },30);
 
-/* Daha önce isim girmiş misafiri otomatik içeri al. */
 try {
   const saved = JSON.parse(sessionStorage.getItem('mh_guest') || 'null');
 
