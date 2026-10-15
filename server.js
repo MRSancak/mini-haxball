@@ -14,7 +14,7 @@ const wss = new WebSocket.Server({ server, perMessageDeflate: false });
 const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '32kb' }));
 
-// HTML, CSS VE GELİŞMİŞ RETRO GRAFİKLER
+// HTML, CSS & GELİŞMİŞ PİKSEL GRAFİKLER
 app.get('/', (_req, res) => {
   res.send(`<!doctype html>
 <html lang="tr">
@@ -75,7 +75,7 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 }
 
 .hidden { display:none!important; }
-.wrap { max-width:1320px; margin:auto; padding:20px; }
+.wrap { max-width:1450px; margin:auto; padding:20px; }
 
 .top, .game-head {
   display:flex;
@@ -122,7 +122,6 @@ input:focus { border-color: var(--cyan); }
 label { display:block; margin:6px 0; font-size: 15px; }
 
 .auth-grid { max-width:480px; margin:50px auto; }
-
 .error { color:var(--red); min-height:24px; font-size: 16px; margin-top: 5px; }
 .note { color:#849da8; font-size: 18px; }
 
@@ -168,6 +167,32 @@ label { display:block; margin:6px 0; font-size: 15px; }
   margin:12px 0;
 }
 
+/* LOBİ MEVKİ SEÇİM GRID */
+.teams-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.team-box {
+  background: #090f16;
+  border: 3px solid #3bb2ff;
+  padding: 16px;
+}
+.team-box.red { border-color: #ff6b6b; }
+.role-select {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.role-card {
+  background: #16222d;
+  border: 2px solid var(--line);
+  padding: 10px;
+  text-align: center;
+}
+
 .score-board {
   background:#05080c;
   border:3px solid var(--line);
@@ -208,9 +233,7 @@ label { display:block; margin:6px 0; font-size: 15px; }
   justify-content: center;
   z-index: 10;
   text-align: center;
-  animation: fadeIn 0.2s ease-in-out;
 }
-
 .goal-banner {
   font: 32px 'Press Start 2P';
   color: var(--lime);
@@ -218,21 +241,15 @@ label { display:block; margin:6px 0; font-size: 15px; }
   margin-bottom: 15px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
 .sidebox { background:var(--panel); border:3px solid var(--line); padding:16px; margin-bottom:14px; }
 .key { display:inline-block; background:#070b10; border:2px solid #2a4359; padding:4px 8px; color:var(--lime); font-size: 15px; font-weight:bold; }
 
 #playersList { max-height:280px; overflow:auto; font-size: 18px; }
 .status { min-height:24px; color:#849da8; margin-top:10px; font-size: 18px; }
-
 .footer { text-align:center; color:#4a626e; margin:25px; font-size: 16px; }
 
 @media(max-width:800px) {
-  .auth-grid, .dashboard, .game-layout { grid-template-columns:1fr; }
+  .auth-grid, .dashboard, .game-layout, .teams-grid { grid-template-columns:1fr; }
   .wrap { padding:10px; }
 }
 </style>
@@ -248,7 +265,7 @@ label { display:block; margin:6px 0; font-size: 15px; }
   <div id="headerRight" class="tag">GİRİŞ YAPILMADI</div>
 </header>
 
-<!-- GİRİŞ / KAYIT EKRANI -->
+<!-- GİRİŞ / KAYIT -->
 <section id="authView">
   <div class="auth-grid">
     <div class="panel">
@@ -277,7 +294,7 @@ label { display:block; margin:6px 0; font-size: 15px; }
   </div>
 </section>
 
-<!-- OYUNCU DASHBOARD / PROFİL & İSTATİSTİKLER -->
+<!-- OYUNCU PANELİ & DASHBOARD -->
 <section id="dashboardView" class="hidden">
   <div class="dashboard">
     <aside class="panel">
@@ -324,6 +341,39 @@ label { display:block; margin:6px 0; font-size: 15px; }
   </div>
 </section>
 
+<!-- LOBİ & MEVKİ SEÇME EKRANI -->
+<section id="lobbyView" class="hidden">
+  <div class="panel">
+    <h2>TAKIMINI VE MEVKİNİ SEÇ</h2>
+    <div class="teams-grid">
+      <div class="team-box">
+        <h3 style="color:#3bb2ff;">MAVİ TAKIM</h3>
+        <div id="blueSlots" style="margin:10px 0;"></div>
+        <div class="role-select">
+          <div class="role-card"><h3>DEF</h3><button data-team="blue" data-role="DEF">SEÇ</button></div>
+          <div class="role-card"><h3>MID</h3><button data-team="blue" data-role="MID">SEÇ</button></div>
+          <div class="role-card"><h3>FWD</h3><button data-team="blue" data-role="FWD">SEÇ</button></div>
+        </div>
+      </div>
+
+      <div class="team-box red">
+        <h3 style="color:#ff6b6b;">KIRMIZI TAKIM</h3>
+        <div id="redSlots" style="margin:10px 0;"></div>
+        <div class="role-select">
+          <div class="role-card"><h3>DEF</h3><button data-team="red" data-role="DEF">SEÇ</button></div>
+          <div class="role-card"><h3>MID</h3><button data-team="red" data-role="MID">SEÇ</button></div>
+          <div class="role-card"><h3>FWD</h3><button data-team="red" data-role="FWD">SEÇ</button></div>
+        </div>
+      </div>
+    </div>
+    <div id="lobbyStatus" class="status">Takım ve mevki seçin.</div>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button id="enterPitchBtn" style="flex:1;">SAHAYA GEÇ</button>
+      <button id="backToDashBtn" class="secondary">PANELE DÖN</button>
+    </div>
+  </div>
+</section>
+
 <!-- MAÇ OYUN EKRANI -->
 <section id="gameView" class="hidden">
   <div class="game-head">
@@ -339,7 +389,8 @@ label { display:block; margin:6px 0; font-size: 15px; }
   <div class="game-layout">
     <div>
       <div class="pitch-wrap">
-        <canvas id="pitch" width="1200" height="700"></canvas>
+        <!-- BÜYÜTÜLMÜŞ SAHA CANVAS (1400x800) -->
+        <canvas id="pitch" width="1400" height="800"></canvas>
         <div id="goalOverlay" class="goal-overlay hidden">
           <div class="goal-banner">GOOOOL!</div>
           <div id="goalScorerText" class="note" style="color:var(--cream); font-size:24px;">Golü Atan: -</div>
@@ -377,7 +428,7 @@ let myId = null;
 let keys = { up:false, down:false, left:false, right:false, space:false };
 
 function show(id) {
-  ['authView','dashboardView','gameView'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+  ['authView','dashboardView','lobbyView','gameView'].forEach(v => $(v).classList.toggle('hidden', v !== id));
 }
 
 async function api(endpoint, data) {
@@ -486,14 +537,30 @@ $('logoutBtn').onclick = () => {
 };
 
 $('joinServerBtn').onclick = () => {
-  show('gameView');
   connectWebSocket();
+  show('lobbyView');
+};
+
+$('backToDashBtn').onclick = () => {
+  if (ws) ws.close();
+  show('dashboardView');
 };
 
 $('leaveGameBtn').onclick = () => {
   if (ws) ws.close();
   checkSession();
-  show('dashboardView');
+  show('lobbyView');
+};
+
+document.querySelectorAll('[data-team][data-role]').forEach(btn => {
+  btn.onclick = () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'select', team: btn.dataset.team, role: btn.dataset.role }));
+  };
+});
+
+$('enterPitchBtn').onclick = () => {
+  show('gameView');
 };
 
 function connectWebSocket() {
@@ -507,26 +574,32 @@ function connectWebSocket() {
     if (msg.type === 'welcome') {
       myId = msg.id;
     } else if (msg.type === 'state') {
+      renderLobby(msg);
       renderGame(msg);
     } else if (msg.type === 'goal') {
       showGoalAnimation(msg.scorer);
     } else if (msg.type === 'full' || msg.type === 'auth_error') {
       alert(msg.message);
-      checkSession();
       show('dashboardView');
     }
   };
 }
 
+function renderLobby(state) {
+  const bluePlayers = state.players.filter(p => p.team === 'blue');
+  const redPlayers = state.players.filter(p => p.team === 'red');
+
+  $('blueSlots').innerHTML = bluePlayers.map(p => '<div>#' + p.jerseyNumber + ' ' + p.name + ' (' + (p.role || 'Seçmedi') + ')</div>').join('') || '<div class="note">Boş</div>';
+  $('redSlots').innerHTML = redPlayers.map(p => '<div>#' + p.jerseyNumber + ' ' + p.name + ' (' + (p.role || 'Seçmedi') + ')</div>').join('') || '<div class="note">Boş</div>';
+}
+
 function showGoalAnimation(scorerName) {
   $('goalScorerText').textContent = 'Golü Atan: ' + (scorerName || 'Bilinmiyor');
   $('goalOverlay').classList.remove('hidden');
-  setTimeout(() => {
-    $('goalOverlay').classList.add('hidden');
-  }, 2500);
+  setTimeout(() => { $('goalOverlay').classList.add('hidden'); }, 2500);
 }
 
-// RETRO CANLI GRAFİKLER
+// BÜYÜTÜLMÜŞ SAHA & GRAFİKLER (1400x800)
 const canvas = $('pitch');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -534,30 +607,34 @@ ctx.imageSmoothingEnabled = false;
 function renderGame(state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Çim Sahası
   ctx.fillStyle = '#2f693a';
-  ctx.fillRect(40, 40, 1120, 620);
+  ctx.fillRect(40, 40, 1320, 720);
 
   ctx.fillStyle = '#285d32';
-  for (let x = 40; x < 1160; x += 80) {
-    ctx.fillRect(x, 40, 40, 620);
+  for (let x = 40; x < 1360; x += 90) {
+    ctx.fillRect(x, 40, 45, 720);
   }
 
+  // Beyaz Çizgiler ve Kaleler
   ctx.strokeStyle = '#e2ecd1';
   ctx.lineWidth = 4;
-  ctx.strokeRect(40, 40, 1120, 620);
+  ctx.strokeRect(40, 40, 1320, 720);
 
   ctx.beginPath();
-  ctx.moveTo(600, 40);
-  ctx.lineTo(600, 660);
+  ctx.moveTo(700, 40);
+  ctx.lineTo(700, 760);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(600, 350, 85, 0, Math.PI * 2);
+  ctx.arc(700, 400, 95, 0, Math.PI * 2);
   ctx.stroke();
 
-  ctx.strokeRect(40, 230, 45, 240);
-  ctx.strokeRect(1115, 230, 45, 240);
+  // Ceza Sahaları
+  ctx.strokeRect(40, 260, 55, 280);
+  ctx.strokeRect(1305, 260, 55, 280);
 
+  // Oyuncular
   state.players.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y + 6, 16, 0, Math.PI * 2);
@@ -588,14 +665,15 @@ function renderGame(state) {
     }
   });
 
+  // Top
   if (state.ball) {
     ctx.beginPath();
-    ctx.arc(state.ball.x, state.ball.y + 3, 13, 0, Math.PI * 2);
+    ctx.arc(state.ball.x, state.ball.y + 3, 14, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(state.ball.x, state.ball.y, 13, 0, Math.PI * 2);
+    ctx.arc(state.ball.x, state.ball.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.lineWidth = 2;
@@ -656,7 +734,7 @@ checkSession();
 </html>`);
 });
 
-// SUNUCU & KALICI VERİTABANI YÖNETİMİ
+// SUNUCU & KALICI VERİTABANI YÖNETİMİ (user.json)
 const DATA_DIR = process.env.USER_DATA_DIR || __dirname;
 const USERS_FILE = path.join(DATA_DIR, 'user.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -689,17 +767,18 @@ const players = new Map();
 const MAX_PLAYERS = 12;
 const MATCH_TIME = 300;
 
-const FIELD = { x: 40, y: 40, width: 1120, height: 620 };
-const GOAL = { width: 45, height: 240 };
+// BÜYÜTÜLMÜŞ SAHA FİZİK BOYUTLARI (1400x800)
+const FIELD = { x: 40, y: 40, width: 1320, height: 720 };
+const GOAL = { width: 55, height: 280 };
 const PLAYER_RADIUS = 18;
 const PLAYER_SPEED = 4.8;
-const BALL_RADIUS = 13;
+const BALL_RADIUS = 14;
 
 let blueScore = 0;
 let redScore = 0;
 let matchTime = MATCH_TIME;
 let lastTouchPlayer = null;
-const ball = { x: 600, y: 350, vx: 0, vy: 0 };
+const ball = { x: 700, y: 400, vx: 0, vy: 0 };
 
 function normalizeUsername(v) { return String(v || '').trim().toLowerCase(); }
 function validUsername(v) { return typeof v === 'string' && /^[a-zA-Z0-9_]{3,16}$/.test(v.trim()); }
@@ -791,12 +870,6 @@ app.put('/api/profile', auth, async (req, res) => {
   res.json({ profile: req.user.profile });
 });
 
-function getTeam() {
-  let blue = 0, red = 0;
-  for (const p of players.values()) p.team === 'blue' ? blue++ : red++;
-  return blue <= red ? 'blue' : 'red';
-}
-
 function resetBall() {
   ball.x = FIELD.x + FIELD.width / 2;
   ball.y = FIELD.y + FIELD.height / 2;
@@ -809,8 +882,8 @@ function resetPlayers() {
   let bi = 0, ri = 0;
   for (const p of players.values()) {
     const isBlue = p.team === 'blue';
-    p.x = isBlue ? FIELD.x + 200 + (bi * 45) : FIELD.x + FIELD.width - 200 - (ri * 45);
-    p.y = FIELD.y + 200 + (isBlue ? bi++ : ri++) * 80;
+    p.x = isBlue ? FIELD.x + 250 + (bi * 50) : FIELD.x + FIELD.width - 250 - (ri * 50);
+    p.y = FIELD.y + 250 + (isBlue ? bi++ : ri++) * 90;
     p.vx = 0; p.vy = 0;
     p.hasBall = false;
     p.slowTimer = 0;
@@ -857,14 +930,12 @@ wss.on('connection', ws => {
         saveUsers();
 
         const id = crypto.randomBytes(6).toString('hex');
-        const team = getTeam();
-
         const player = {
           id, username,
           name: user.profile.displayName,
           jerseyNumber: user.profile.jerseyNumber,
           jerseyColor: user.profile.jerseyColor,
-          team, ws, x: 0, y: 0, vx: 0, vy: 0,
+          team: 'blue', role: 'MID', ws, x: 0, y: 0, vx: 0, vy: 0,
           keys: { up: false, down: false, left: false, right: false },
           hasBall: false,
           slowTimer: 0
@@ -872,14 +943,22 @@ wss.on('connection', ws => {
 
         players.set(id, player);
         ws.playerId = id;
-        ws.send(JSON.stringify({ type: 'welcome', id, team }));
+        ws.send(JSON.stringify({ type: 'welcome', id }));
         resetPlayers();
       }
       return;
     }
 
     const player = players.get(ws.playerId);
-    if (player && data.type === 'input') {
+    if (!player) return;
+
+    if (data.type === 'select') {
+      if (['blue', 'red'].includes(data.team) && ['DEF', 'MID', 'FWD'].includes(data.role)) {
+        player.team = data.team;
+        player.role = data.role;
+        resetPlayers();
+      }
+    } else if (data.type === 'input') {
       player.keys.up = !!data.up;
       player.keys.down = !!data.down;
       player.keys.left = !!data.left;
@@ -887,14 +966,14 @@ wss.on('connection', ws => {
 
       if (data.space) {
         if (player.hasBall) {
-          ball.vx = (player.team === 'blue' ? 1 : -1) * 15;
+          ball.vx = (player.team === 'blue' ? 1 : -1) * 16;
           ball.vy = (Math.random() - 0.5) * 4;
           player.hasBall = false;
           lastTouchPlayer = player;
         } else if (player.slowTimer <= 0) {
           let success = false;
           for (const other of players.values()) {
-            if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 65) {
+            if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 70) {
               if (other.hasBall) {
                 other.hasBall = false;
                 player.hasBall = true;
@@ -920,7 +999,7 @@ wss.on('connection', ws => {
   });
 });
 
-// FİZİK DÖNGÜSÜ
+// FİZİK MOTORU
 setInterval(() => {
   for (const p of players.values()) {
     if (p.slowTimer > 0) p.slowTimer--;
@@ -941,7 +1020,7 @@ setInterval(() => {
     p.y = Math.max(FIELD.y + PLAYER_RADIUS, Math.min(FIELD.y + FIELD.height - PLAYER_RADIUS, p.y + p.vy));
 
     if (p.hasBall) {
-      ball.x = p.x + (p.team === 'blue' ? 20 : -20);
+      ball.x = p.x + (p.team === 'blue' ? 22 : -22);
       ball.y = p.y;
       ball.vx = p.vx;
       ball.vy = p.vy;
@@ -988,13 +1067,13 @@ setInterval(() => {
   }
 }, 1000 / 60);
 
-// CANLI OYUN DURUMU SİNYALİ
+// SÜREKLİ DURUM GÖNDERİMİ
 setInterval(() => {
   if (!players.size) return;
   const state = JSON.stringify({
     type: 'state',
     players: [...players.values()].map(p => ({
-      id: p.id, name: p.name, jerseyNumber: p.jerseyNumber, jerseyColor: p.jerseyColor, team: p.team,
+      id: p.id, name: p.name, jerseyNumber: p.jerseyNumber, jerseyColor: p.jerseyColor, team: p.team, role: p.role,
       x: Math.round(p.x), y: Math.round(p.y), slowTimer: p.slowTimer
     })),
     ball: { x: Math.round(ball.x), y: Math.round(ball.y) },
