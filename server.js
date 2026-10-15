@@ -14,7 +14,7 @@ const wss = new WebSocket.Server({ server, perMessageDeflate: false });
 const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '32kb' }));
 
-// GELİŞMİŞ PİKSEL GRAFİKLER VE ŞIK ARAYÜZ (HTML & CSS)
+// HTML, CSS VE GELİŞMİŞ RETRO GRAFİKLER
 app.get('/', (_req, res) => {
   res.send(`<!doctype html>
 <html lang="tr">
@@ -186,6 +186,8 @@ label { display:block; margin:6px 0; font-size: 15px; }
   gap:16px;
 }
 
+.pitch-wrap { position: relative; }
+
 #pitch {
   width:100%;
   height:auto;
@@ -194,6 +196,31 @@ label { display:block; margin:6px 0; font-size: 15px; }
   image-rendering:pixelated;
   background:#2f693a;
   box-shadow: 0 12px 30px rgba(0,0,0,0.7), inset 0 0 50px rgba(0,0,0,0.3);
+}
+
+.goal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 11, 16, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  text-align: center;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.goal-banner {
+  font: 32px 'Press Start 2P';
+  color: var(--lime);
+  text-shadow: 4px 4px #000, 0 0 20px var(--lime);
+  margin-bottom: 15px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .sidebox { background:var(--panel); border:3px solid var(--line); padding:16px; margin-bottom:14px; }
@@ -311,7 +338,13 @@ label { display:block; margin:6px 0; font-size: 15px; }
 
   <div class="game-layout">
     <div>
-      <canvas id="pitch" width="1200" height="700"></canvas>
+      <div class="pitch-wrap">
+        <canvas id="pitch" width="1200" height="700"></canvas>
+        <div id="goalOverlay" class="goal-overlay hidden">
+          <div class="goal-banner">GOOOOL!</div>
+          <div id="goalScorerText" class="note" style="color:var(--cream); font-size:24px;">Golü Atan: -</div>
+        </div>
+      </div>
       <div id="gameStatus" class="status">WASD: Hareket | Top Sende İken SPACE: Şut | Top Sende Değilken SPACE: Top Kapma</div>
     </div>
 
@@ -475,14 +508,25 @@ function connectWebSocket() {
       myId = msg.id;
     } else if (msg.type === 'state') {
       renderGame(msg);
+    } else if (msg.type === 'goal') {
+      showGoalAnimation(msg.scorer);
     } else if (msg.type === 'full' || msg.type === 'auth_error') {
       alert(msg.message);
+      checkSession();
       show('dashboardView');
     }
   };
 }
 
-// GÜZELLEŞTİRİLMİŞ RETRO PİKSEL SAHA VE OYUNCU GRAFİKLERİ
+function showGoalAnimation(scorerName) {
+  $('goalScorerText').textContent = 'Golü Atan: ' + (scorerName || 'Bilinmiyor');
+  $('goalOverlay').classList.remove('hidden');
+  setTimeout(() => {
+    $('goalOverlay').classList.add('hidden');
+  }, 2500);
+}
+
+// RETRO CANLI GRAFİKLER
 const canvas = $('pitch');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -490,7 +534,6 @@ ctx.imageSmoothingEnabled = false;
 function renderGame(state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Detaylı Çim Dokusu
   ctx.fillStyle = '#2f693a';
   ctx.fillRect(40, 40, 1120, 620);
 
@@ -499,7 +542,6 @@ function renderGame(state) {
     ctx.fillRect(x, 40, 40, 620);
   }
 
-  // Saha Çizgileri & Kaleler
   ctx.strokeStyle = '#e2ecd1';
   ctx.lineWidth = 4;
   ctx.strokeRect(40, 40, 1120, 620);
@@ -513,19 +555,15 @@ function renderGame(state) {
   ctx.arc(600, 350, 85, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Kale Alanları (Ceza Sahaları)
   ctx.strokeRect(40, 230, 45, 240);
   ctx.strokeRect(1115, 230, 45, 240);
 
-  // Oyuncular (Gelişmiş Gölge ve Stil)
   state.players.forEach(p => {
-    // Ayak Gölgesi
     ctx.beginPath();
     ctx.arc(p.x, p.y + 6, 16, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fill();
 
-    // Forma Tabanı
     ctx.beginPath();
     ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = p.jerseyColor;
@@ -534,26 +572,22 @@ function renderGame(state) {
     ctx.strokeStyle = p.id === myId ? '#c9f06b' : '#0d131a';
     ctx.stroke();
 
-    // Oyuncu Numarası
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(p.jerseyNumber, p.x, p.y + 4);
 
-    // İsim Etiketi
     ctx.font = '12px monospace';
     ctx.fillStyle = '#f4efcf';
     ctx.fillText(p.name, p.x, p.y - 24);
 
-    // Yavaşlama Durumu Göstergesi
     if (p.slowTimer > 0) {
       ctx.fillStyle = '#ff6b6b';
       ctx.font = '10px monospace';
-      ctx.fillText('YAVAŞLA! (-)', p.x, p.y - 38);
+      ctx.fillText('YAVAŞLA!', p.x, p.y - 38);
     }
   });
 
-  // Top (Parlama Efektiyle)
   if (state.ball) {
     ctx.beginPath();
     ctx.arc(state.ball.x, state.ball.y + 3, 13, 0, Math.PI * 2);
@@ -612,7 +646,7 @@ window.addEventListener('keyup', e => {
 function sendInput() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type: 'input', ...keys }));
-  keys.space = false; // Tek seferlik tetik
+  keys.space = false;
 }
 
 checkSession();
@@ -622,7 +656,7 @@ checkSession();
 </html>`);
 });
 
-// SUNUCU & VERİ TABANI YÖNETİMİ
+// SUNUCU & KALICI VERİTABANI YÖNETİMİ
 const DATA_DIR = process.env.USER_DATA_DIR || __dirname;
 const USERS_FILE = path.join(DATA_DIR, 'user.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -660,14 +694,12 @@ const GOAL = { width: 45, height: 240 };
 const PLAYER_RADIUS = 18;
 const PLAYER_SPEED = 4.8;
 const BALL_RADIUS = 13;
-const BALL_MAX_SPEED = 18;
 
 let blueScore = 0;
 let redScore = 0;
 let matchTime = MATCH_TIME;
+let lastTouchPlayer = null;
 const ball = { x: 600, y: 350, vx: 0, vy: 0 };
-
-app.use(express.json({ limit: '32kb' }));
 
 function normalizeUsername(v) { return String(v || '').trim().toLowerCase(); }
 function validUsername(v) { return typeof v === 'string' && /^[a-zA-Z0-9_]{3,16}$/.test(v.trim()); }
@@ -770,6 +802,7 @@ function resetBall() {
   ball.y = FIELD.y + FIELD.height / 2;
   ball.vx = 0;
   ball.vy = 0;
+  lastTouchPlayer = null;
 }
 
 function resetPlayers() {
@@ -785,6 +818,28 @@ function resetPlayers() {
   resetBall();
 }
 
+function handleGoal(scoringTeam) {
+  let scorerName = 'Bilinmiyor';
+  if (lastTouchPlayer && players.has(lastTouchPlayer.id)) {
+    scorerName = lastTouchPlayer.name;
+    const userKey = normalizeUsername(lastTouchPlayer.username);
+    if (users[userKey]) {
+      users[userKey].stats.goals = (users[userKey].stats.goals || 0) + 1;
+      saveUsers();
+    }
+  }
+
+  const goalMsg = JSON.stringify({ type: 'goal', scorer: scorerName });
+  for (const p of players.values()) {
+    if (p.ws.readyState === WebSocket.OPEN) p.ws.send(goalMsg);
+  }
+
+  if (scoringTeam === 'blue') blueScore++;
+  else redScore++;
+
+  resetPlayers();
+}
+
 wss.on('connection', ws => {
   ws.on('message', raw => {
     let data;
@@ -798,7 +853,7 @@ wss.on('connection', ws => {
           return ws.close();
         }
         const user = users[username];
-        user.stats.matches++;
+        user.stats.matches = (user.stats.matches || 0) + 1;
         saveUsers();
 
         const id = crypto.randomBytes(6).toString('hex');
@@ -830,29 +885,27 @@ wss.on('connection', ws => {
       player.keys.left = !!data.left;
       player.keys.right = !!data.right;
 
-      // TUŞ KONTROLÜ: TOP SENDE İSE ŞUT ÇEK, DEĞİLSE TOP KAPMA (TACKLE) YAP
       if (data.space) {
         if (player.hasBall) {
-          // ŞUT ÇEKME MEKANİĞİ
-          const shootAngle = player.team === 'blue' ? 0 : Math.PI;
-          ball.vx = (player.team === 'blue' ? 1 : -1) * 14;
+          ball.vx = (player.team === 'blue' ? 1 : -1) * 15;
           ball.vy = (Math.random() - 0.5) * 4;
           player.hasBall = false;
+          lastTouchPlayer = player;
         } else if (player.slowTimer <= 0) {
-          // TOP KAPMA (TACKLE) MEKANİĞİ
           let success = false;
           for (const other of players.values()) {
             if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 65) {
               if (other.hasBall) {
                 other.hasBall = false;
                 player.hasBall = true;
+                lastTouchPlayer = player;
                 success = true;
                 break;
               }
             }
           }
           if (!success) {
-            player.slowTimer = 60; // Boşa hamle yaparsa 1 saniye yavaşlar
+            player.slowTimer = 60;
           }
         }
       }
@@ -867,7 +920,7 @@ wss.on('connection', ws => {
   });
 });
 
-// FİZİK MOTORU
+// FİZİK DÖNGÜSÜ
 setInterval(() => {
   for (const p of players.values()) {
     if (p.slowTimer > 0) p.slowTimer--;
@@ -887,7 +940,6 @@ setInterval(() => {
     p.x = Math.max(FIELD.x + PLAYER_RADIUS, Math.min(FIELD.x + FIELD.width - PLAYER_RADIUS, p.x + p.vx));
     p.y = Math.max(FIELD.y + PLAYER_RADIUS, Math.min(FIELD.y + FIELD.height - PLAYER_RADIUS, p.y + p.vy));
 
-    // TOP SENDE İSE YANINDA TAŞI
     if (p.hasBall) {
       ball.x = p.x + (p.team === 'blue' ? 20 : -20);
       ball.y = p.y;
@@ -896,12 +948,12 @@ setInterval(() => {
     }
   }
 
-  // TOP TEMAS KONTROLÜ
   for (const p of players.values()) {
     const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
     if (dist < PLAYER_RADIUS + BALL_RADIUS) {
       for (const other of players.values()) other.hasBall = false;
       p.hasBall = true;
+      lastTouchPlayer = p;
       ball.vx = p.vx * 1.2;
       ball.vy = p.vy * 1.2;
     }
@@ -914,7 +966,6 @@ setInterval(() => {
     ball.vy *= 0.985;
   }
 
-  // DUVARLAR VE GOLLER
   if (ball.y - BALL_RADIUS < FIELD.y) { ball.y = FIELD.y + BALL_RADIUS; ball.vy *= -0.85; }
   if (ball.y + BALL_RADIUS > FIELD.y + FIELD.height) { ball.y = FIELD.y + FIELD.height - BALL_RADIUS; ball.vy *= -0.85; }
 
@@ -923,23 +974,21 @@ setInterval(() => {
 
   if (ball.x - BALL_RADIUS < FIELD.x) {
     if (ball.y > goalTop && ball.y < goalBot) {
-      redScore++;
-      resetPlayers();
+      handleGoal('red');
       return;
     }
     ball.x = FIELD.x + BALL_RADIUS; ball.vx *= -0.85;
   }
   if (ball.x + BALL_RADIUS > FIELD.x + FIELD.width) {
     if (ball.y > goalTop && ball.y < goalBot) {
-      blueScore++;
-      resetPlayers();
+      handleGoal('blue');
       return;
     }
     ball.x = FIELD.x + FIELD.width - BALL_RADIUS; ball.vx *= -0.85;
   }
 }, 1000 / 60);
 
-// DURUM GÖNDERİMİ
+// CANLI OYUN DURUMU SİNYALİ
 setInterval(() => {
   if (!players.size) return;
   const state = JSON.stringify({
