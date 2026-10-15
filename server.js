@@ -9,16 +9,12 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({
-  server,
-  perMessageDeflate: false
-});
+const wss = new WebSocket.Server({ server, perMessageDeflate: false });
 
 const PORT = process.env.PORT || 3000;
-
 app.use(express.json({ limit: '32kb' }));
 
-// TEK DOSYA İÇİNDE FULL HTML / CSS / JS ARAYÜZÜ
+// FULL HTML / CSS / JS ARAYÜZÜ (Piksel Sanat & Gelişmiş Grafikler)
 app.get('/', (_req, res) => {
   res.send(`<!doctype html>
 <html lang="tr">
@@ -30,13 +26,14 @@ app.get('/', (_req, res) => {
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-  --bg:#101820;
-  --panel:#192b37;
-  --line:#3e5868;
+  --bg:#0c1117;
+  --panel:#16222d;
+  --line:#31495b;
   --cream:#f4efcf;
   --lime:#c9f06b;
   --cyan:#64dce8;
-  --red:#ff8585;
+  --red:#ff7b7b;
+  --blue:#4ca6ff;
 }
 
 *, *::before, *::after { box-sizing:border-box; }
@@ -54,31 +51,30 @@ button {
   cursor:pointer;
   border:0;
   background:var(--lime);
-  color:#18212a;
+  color:#121921;
   padding:12px;
   font:10px 'Press Start 2P';
   box-shadow:4px 4px #718e39;
-  transition: transform 0.1s;
+  transition: transform 0.08s;
 }
 button:active { transform: translate(2px, 2px); box-shadow:2px 2px #718e39; }
 button:disabled { opacity:.5; cursor:not-allowed; }
 
 .secondary {
-  background:#304754;
+  background:#263c4a;
   color:var(--cream);
-  box-shadow:4px 4px #090f14;
+  box-shadow:4px 4px #080e12;
 }
-.secondary:active { box-shadow:2px 2px #090f14; }
+.secondary:active { box-shadow:2px 2px #080e12; }
 
 .danger {
   background:var(--red);
-  color:#18212a;
+  color:#121921;
   box-shadow:4px 4px #9c3f3f;
 }
 
 .hidden { display:none!important; }
-
-.wrap { max-width:1250px; margin:auto; padding:20px; }
+.wrap { max-width:1300px; margin:auto; padding:20px; }
 
 .top, .game-head {
   display:flex;
@@ -90,8 +86,9 @@ button:disabled { opacity:.5; cursor:not-allowed; }
 }
 
 .brand {
-  font:18px/1.7 'Press Start 2P';
+  font:16px/1.8 'Press Start 2P';
   color:var(--lime);
+  text-shadow: 2px 2px #000;
 }
 
 .tag, h2, h3 {
@@ -105,47 +102,45 @@ button:disabled { opacity:.5; cursor:not-allowed; }
   background:var(--panel);
   border:3px solid var(--line);
   padding:20px;
-  box-shadow:5px 5px #090f14;
+  box-shadow:6px 6px #080e12;
   margin-bottom: 20px;
 }
 
 input {
   width:100%;
   padding:12px;
-  background:#0d171e;
+  background:#090e13;
   color:white;
-  border:2px solid #496271;
+  border:2px solid #3e5a6f;
   margin-bottom: 12px;
+  font-size: 20px;
 }
 
-label { display:block; margin:6px 0; font-size: 14px; }
+label { display:block; margin:6px 0; font-size: 15px; }
 
-.auth-grid {
-  max-width:480px;
-  margin:40px auto;
-}
+.auth-grid { max-width:480px; margin:40px auto; }
 
 .error { color:var(--red); min-height:24px; font-size: 16px; margin-top: 5px; }
-.note { color:#a0b5bf; font-size: 18px; }
+.note { color:#8da4b0; font-size: 18px; }
 
 .dashboard {
   display:grid;
-  grid-template-columns:320px minmax(0,1fr);
+  grid-template-columns:340px minmax(0,1fr);
   gap:20px;
 }
 
 .profile-top { display:flex; gap:12px; align-items:center; margin-bottom: 15px; }
 
 .avatar {
-  width:60px;
-  height:60px;
+  width:65px;
+  height:65px;
   display:grid;
   place-items:center;
   background:var(--lime);
-  color:#15202a;
+  color:#121921;
   font-family:'Press Start 2P';
   font-size: 18px;
-  border: 2px solid #3e5868;
+  border: 3px solid #31495b;
 }
 
 .stat {
@@ -153,12 +148,13 @@ label { display:block; margin:6px 0; font-size: 14px; }
   justify-content:space-between;
   gap:10px;
   border-top:1px dashed var(--line);
-  padding:10px 0;
+  padding:8px 0;
+  font-size: 19px;
 }
 .stat b { color:var(--lime); font-weight:normal; text-align:right; }
 
 .server {
-  background:#101c24;
+  background:#0e1720;
   border:2px solid var(--line);
   padding:18px;
   display:flex;
@@ -168,23 +164,20 @@ label { display:block; margin:6px 0; font-size: 14px; }
   margin:12px 0;
 }
 
-.teams { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom: 20px; }
-.team { padding:14px; background:#111e26; border:3px solid #299cff; }
-.team.red { border-color:#ff5959; }
-
-.slot { padding:8px; border-bottom:1px dashed var(--line); font-size: 18px; }
-
-.score {
-  background:#071016;
+.score-board {
+  background:#060a0f;
   border:3px solid var(--line);
-  padding:10px 16px;
+  padding:12px 20px;
   font:12px 'Press Start 2P';
+  display: flex;
+  gap: 15px;
+  align-items: center;
 }
-.score span { color:var(--lime); }
+.score-board span { color:var(--lime); }
 
 .game-layout {
   display:grid;
-  grid-template-columns:minmax(0,1fr) 260px;
+  grid-template-columns:minmax(0,1fr) 280px;
   gap:14px;
 }
 
@@ -192,21 +185,22 @@ label { display:block; margin:6px 0; font-size: 14px; }
   width:100%;
   height:auto;
   display:block;
-  border:4px solid #d5e0b1;
+  border:4px solid #b8c894;
   image-rendering:pixelated;
-  background:#387f45;
+  background:#3b8247;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
-.sidebox { background:var(--panel); border:3px solid var(--line); padding:12px; margin-bottom:12px; }
-.key { display:inline-block; background:#081219; border:2px solid #506773; padding:4px; color:var(--lime); font-size: 16px; }
+.sidebox { background:var(--panel); border:3px solid var(--line); padding:14px; margin-bottom:14px; }
+.key { display:inline-block; background:#080e12; border:2px solid #3e5a6f; padding:3px 6px; color:var(--lime); font-size: 15px; }
 
-#playersList { max-height:250px; overflow:auto; font-size: 18px; }
-.status { min-height:24px; color:#a0b5bf; margin-top:10px; font-size: 18px; }
+#playersList { max-height:280px; overflow:auto; font-size: 18px; }
+.status { min-height:24px; color:#8da4b0; margin-top:10px; font-size: 18px; }
 
-.footer { text-align:center; color:#728995; margin:25px; font-size: 16px; }
+.footer { text-align:center; color:#5b7380; margin:25px; font-size: 16px; }
 
 @media(max-width:800px) {
-  .auth-grid, .dashboard, .game-layout, .teams { grid-template-columns:1fr; }
+  .auth-grid, .dashboard, .game-layout { grid-template-columns:1fr; }
   .wrap { padding:10px; }
 }
 </style>
@@ -251,7 +245,7 @@ label { display:block; margin:6px 0; font-size: 14px; }
   </div>
 </section>
 
-<!-- OYUNCU DASHBOARD / PROFİL -->
+<!-- OYUNCU DASHBOARD / PROFİL & İSTATİSTİKLER -->
 <section id="dashboardView" class="hidden">
   <div class="dashboard">
     <aside class="panel">
@@ -265,6 +259,10 @@ label { display:block; margin:6px 0; font-size: 14px; }
       </div>
 
       <div class="stat"><span>Kullanıcı Adı</span><b id="profileUsername"></b></div>
+      <div class="stat"><span>Oynanan Maç</span><b id="statMatches">0</b></div>
+      <div class="stat"><span>Goller</span><b id="statGoals">0</b></div>
+      <div class="stat"><span>Asistler</span><b id="statAssists">0</b></div>
+      <div class="stat"><span>Favori Mevki</span><b id="statRole">Orta Saha</b></div>
       
       <div style="margin-top:15px;">
         <h3>PROFİLİ DÜZENLE</h3>
@@ -298,24 +296,26 @@ label { display:block; margin:6px 0; font-size: 14px; }
 <!-- MAÇ OYUN EKRANI -->
 <section id="gameView" class="hidden">
   <div class="game-head">
-    <div>
-      <div class="tag">PIXEL ARENA / CANLI MAÇ</div>
-      <div class="score"><span id="blueScore">0</span> MAVİ — <span id="redScore">0</span> KIRMIZI</div>
+    <div class="score-board">
+      <div>MAVİ: <span id="blueScore">0</span></div>
+      <div>—</div>
+      <div>KIRMIZI: <span id="redScore">0</span></div>
     </div>
-    <div class="score">SÜRE <span id="timeLeft">05:00</span></div>
-    <button class="secondary" id="leaveGameBtn">LOBİYE / PANELİNE DÖN</button>
+    <div class="score-board">SÜRE <span id="timeLeft">05:00</span></div>
+    <button class="secondary" id="leaveGameBtn">LOBİYE DÖN</button>
   </div>
 
   <div class="game-layout">
     <div>
       <canvas id="pitch" width="1200" height="700"></canvas>
-      <div id="gameStatus" class="status">Bağlantı aktif. Yön tuşlarıyla hareket et!</div>
+      <div id="gameStatus" class="status">WASD ile hareket et | BOŞLUK (SPACE) ile rakipten top kap!</div>
     </div>
 
     <aside>
       <div class="sidebox">
         <h3>KONTROLLER</h3>
-        <p><span class="key">W A S D</span> / Oklar: Hareket</p>
+        <p><span class="key">W A S D</span> Hareket et</p>
+        <p><span class="key">SPACE</span> Top Kapma (Tackle)</p>
       </div>
       <div class="sidebox">
         <h3>SAHADAKİLER</h3>
@@ -336,7 +336,7 @@ let token = localStorage.getItem('mh_token') || '';
 let currentUser = null;
 let ws = null;
 let myId = null;
-let keys = { up:false, down:false, left:false, right:false };
+let keys = { up:false, down:false, left:false, right:false, tackle:false };
 
 function show(id) {
   ['authView','dashboardView','gameView'].forEach(v => $(v).classList.toggle('hidden', v !== id));
@@ -364,30 +364,19 @@ async function apiPut(endpoint, data) {
   return json;
 }
 
-// GİRİŞ / KAYIT İŞLEMLERİ
 $('authForm').addEventListener('submit', async e => {
   e.preventDefault();
   try {
-    const res = await api('/api/login', {
-      username: $('authUsername').value,
-      password: $('authPassword').value
-    });
+    const res = await api('/api/login', { username: $('authUsername').value, password: $('authPassword').value });
     loginSuccess(res);
-  } catch (err) {
-    $('authError').textContent = err.message;
-  }
+  } catch (err) { $('authError').textContent = err.message; }
 });
 
 $('registerBtn').onclick = async () => {
   try {
-    const res = await api('/api/register', {
-      username: $('authUsername').value,
-      password: $('authPassword').value
-    });
+    const res = await api('/api/register', { username: $('authUsername').value, password: $('authPassword').value });
     loginSuccess(res);
-  } catch (err) {
-    $('authError').textContent = err.message;
-  }
+  } catch (err) { $('authError').textContent = err.message; }
 };
 
 $('guestBtn').onclick = async () => {
@@ -396,9 +385,7 @@ $('guestBtn').onclick = async () => {
   try {
     const reg = await api('/api/register', { username: randName, password: randPass });
     loginSuccess(reg);
-  } catch (err) {
-    $('authError').textContent = err.message;
-  }
+  } catch (err) { $('authError').textContent = err.message; }
 };
 
 function loginSuccess(res) {
@@ -412,9 +399,7 @@ function loginSuccess(res) {
 async function checkSession() {
   if (!token) return;
   try {
-    const res = await fetch('/api/profile', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + token } });
     if (!res.ok) throw new Error();
     currentUser = await res.json();
     updateProfileUI();
@@ -431,6 +416,9 @@ function updateProfileUI() {
   $('headerRight').textContent = 'OYUNCU: ' + currentUser.profile.displayName;
   $('displayProfileName').textContent = currentUser.profile.displayName;
   $('profileUsername').textContent = currentUser.username;
+  $('statMatches').textContent = currentUser.stats.matches;
+  $('statGoals').textContent = currentUser.stats.goals;
+  $('statAssists').textContent = currentUser.stats.assists;
   $('editDisplayName').value = currentUser.profile.displayName;
   $('editJerseyNum').value = currentUser.profile.jerseyNumber;
   $('editJerseyColor').value = currentUser.profile.jerseyColor;
@@ -449,9 +437,7 @@ $('saveProfileBtn').onclick = async () => {
     updateProfileUI();
     $('profileError').textContent = 'Profil güncellendi!';
     setTimeout(() => $('profileError').textContent = '', 2000);
-  } catch (err) {
-    $('profileError').textContent = err.message;
-  }
+  } catch (err) { $('profileError').textContent = err.message; }
 };
 
 $('logoutBtn').onclick = () => {
@@ -461,7 +447,6 @@ $('logoutBtn').onclick = () => {
   show('authView');
 };
 
-// SUNUCUYA BAĞLANMA VE OYUN
 $('joinServerBtn').onclick = () => {
   show('gameView');
   connectWebSocket();
@@ -469,6 +454,7 @@ $('joinServerBtn').onclick = () => {
 
 $('leaveGameBtn').onclick = () => {
   if (ws) ws.close();
+  checkSession();
   show('dashboardView');
 };
 
@@ -476,9 +462,7 @@ function connectWebSocket() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(proto + '//' + location.host);
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'join', token }));
-  };
+  ws.onopen = () => { ws.send(JSON.stringify({ type: 'join', token })); };
 
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
@@ -491,13 +475,9 @@ function connectWebSocket() {
       show('dashboardView');
     }
   };
-
-  ws.onclose = () => {
-    // Bağlantı koparsa
-  };
 }
 
-// CANVAS ÇİZİMİ
+// CANVAS ÇİZİMİ & GRAFİKLER
 const canvas = $('pitch');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -505,68 +485,79 @@ ctx.imageSmoothingEnabled = false;
 function renderGame(state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Saha Çimleri
-  ctx.fillStyle = '#387f45';
+  // Saha Çim Çizgileri
+  ctx.fillStyle = '#3b8247';
   ctx.fillRect(40, 40, 1120, 620);
 
-  ctx.strokeStyle = '#e5edc5';
+  ctx.fillStyle = '#357740';
+  for (let x = 40; x < 1160; x += 80) {
+    ctx.fillRect(x, 40, 40, 620);
+  }
+
+  // Çizgiler ve Kaleler
+  ctx.strokeStyle = '#eef3d4';
   ctx.lineWidth = 4;
   ctx.strokeRect(40, 40, 1120, 620);
 
-  // Orta Saha Çizgisi ve Yuvarlağı
   ctx.beginPath();
   ctx.moveTo(600, 40);
   ctx.lineTo(600, 660);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(600, 350, 80, 0, Math.PI * 2);
+  ctx.arc(600, 350, 85, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Kaleler
-  ctx.strokeRect(40, 245, 35, 210);
-  ctx.strokeRect(1125, 245, 35, 210);
+  // Kale Alanları
+  ctx.strokeRect(40, 235, 40, 230);
+  ctx.strokeRect(1120, 235, 40, 230);
 
   // Oyuncular
   state.players.forEach(p => {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 17, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = p.jerseyColor;
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = p.id === myId ? '#c9f06b' : '#111';
     ctx.stroke();
 
+    // Gölge ve Numara
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(p.jerseyNumber, p.x, p.y + 4);
 
     ctx.font = '12px monospace';
-    ctx.fillText(p.name, p.x, p.y - 22);
+    ctx.fillText(p.name, p.x, p.y - 24);
+
+    if (p.slowTimer > 0) {
+      ctx.fillStyle = '#ff7b7b';
+      ctx.font = '10px monospace';
+      ctx.fillText('YAVAŞ!', p.x, p.y - 38);
+    }
   });
 
-  // Top
+  // Top Grafiği
   if (state.ball) {
     ctx.beginPath();
-    ctx.arc(state.ball.x, state.ball.y, 14, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff7d8';
+    ctx.arc(state.ball.x, state.ball.y, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#111';
+    ctx.strokeStyle = '#222';
     ctx.stroke();
   }
 
-  // Skor ve Süre
   $('blueScore').textContent = state.score.blue;
   $('redScore').textContent = state.score.red;
-  
+
   const m = Math.floor(state.matchTime / 60);
   const s = state.matchTime % 60;
   $('timeLeft').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
 
   $('playersList').innerHTML = state.players.map(p => 
-    '<div style="color:' + (p.team === 'blue' ? '#299cff' : '#ff5959') + '">' +
+    '<div style="color:' + (p.team === 'blue' ? '#4ca6ff' : '#ff7b7b') + '">' +
     (p.id === myId ? '▶ ' : '') + '#' + p.jerseyNumber + ' ' + p.name + ' (' + p.team.toUpperCase() + ')' +
     '</div>'
   ).join('');
@@ -576,6 +567,11 @@ function renderGame(state) {
 const keyMap = { w:'up', ArrowUp:'up', s:'down', ArrowDown:'down', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right' };
 
 window.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    keys.tackle = true;
+    sendInput();
+    e.preventDefault();
+  }
   if (keyMap[e.key]) {
     keys[keyMap[e.key]] = true;
     sendInput();
@@ -583,6 +579,10 @@ window.addEventListener('keydown', e => {
 });
 
 window.addEventListener('keyup', e => {
+  if (e.key === ' ') {
+    keys.tackle = false;
+    sendInput();
+  }
   if (keyMap[e.key]) {
     keys[keyMap[e.key]] = false;
     sendInput();
@@ -592,6 +592,7 @@ window.addEventListener('keyup', e => {
 function sendInput() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type: 'input', ...keys }));
+  keys.tackle = false; // Tek Seferlik tetik
 }
 
 checkSession();
@@ -601,7 +602,7 @@ checkSession();
 </html>`);
 });
 
-// DATA KLASÖRÜ
+// KULLANICI VERİLERİ (user.json KALTICI KAYIT)
 const DATA_DIR = process.env.USER_DATA_DIR || __dirname;
 const USERS_FILE = path.join(DATA_DIR, 'user.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -635,17 +636,16 @@ const MAX_PLAYERS = 12;
 const MATCH_TIME = 300;
 
 const FIELD = { x: 40, y: 40, width: 1120, height: 620 };
-const GOAL = { width: 35, height: 210 };
-const PLAYER_RADIUS = 17;
-const PLAYER_SPEED = 4.7;
-const BALL_RADIUS = 14;
-const BALL_MAX_SPEED = 15;
+const GOAL = { width: 40, height: 230 };
+const PLAYER_RADIUS = 18;
+const PLAYER_SPEED = 4.8;
+const BALL_RADIUS = 13;
+const BALL_MAX_SPEED = 16;
 
 let blueScore = 0;
 let redScore = 0;
 let matchTime = MATCH_TIME;
-
-const ball = { x: 600, y: 350, vx: 3, vy: 0 };
+const ball = { x: 600, y: 350, vx: 0, vy: 0 };
 
 app.use(express.json({ limit: '32kb' }));
 
@@ -666,13 +666,15 @@ function verifyPassword(password, record) {
 
 function publicUser(username, user) {
   const profile = user.profile || {};
+  const stats = user.stats || { matches: 0, goals: 0, assists: 0 };
   return {
     username: user.username || username,
     profile: {
       displayName: profile.displayName || user.username || username,
       jerseyNumber: Number.isInteger(profile.jerseyNumber) ? profile.jerseyNumber : 10,
       jerseyColor: profile.jerseyColor || '#299cff'
-    }
+    },
+    stats
   };
 }
 
@@ -705,7 +707,8 @@ app.post('/api/register', async (req, res) => {
     username: username.trim(),
     salt: hashed.salt,
     hash: hashed.hash,
-    profile: { displayName: username.trim(), jerseyNumber: 10, jerseyColor: '#299cff' }
+    profile: { displayName: username.trim(), jerseyNumber: 10, jerseyColor: '#299cff' },
+    stats: { matches: 0, goals: 0, assists: 0 }
   };
   await saveUsers();
   res.status(201).json({ token: issueSession(key), ...publicUser(key, users[key]) });
@@ -745,17 +748,19 @@ function getTeam() {
 function resetBall() {
   ball.x = FIELD.x + FIELD.width / 2;
   ball.y = FIELD.y + FIELD.height / 2;
-  ball.vx = (Math.random() - 0.5) * 4;
-  ball.vy = (Math.random() - 0.5) * 2;
+  ball.vx = 0;
+  ball.vy = 0;
 }
 
 function resetPlayers() {
   let bi = 0, ri = 0;
   for (const p of players.values()) {
     const isBlue = p.team === 'blue';
-    p.x = isBlue ? FIELD.x + 200 + (bi * 40) : FIELD.x + FIELD.width - 200 - (ri * 40);
+    p.x = isBlue ? FIELD.x + 200 + (bi * 45) : FIELD.x + FIELD.width - 200 - (ri * 45);
     p.y = FIELD.y + 200 + (isBlue ? bi++ : ri++) * 80;
     p.vx = 0; p.vy = 0;
+    p.hasBall = false;
+    p.slowTimer = 0;
   }
   resetBall();
 }
@@ -773,6 +778,9 @@ wss.on('connection', ws => {
           return ws.close();
         }
         const user = users[username];
+        user.stats.matches++;
+        saveUsers();
+
         const id = crypto.randomBytes(6).toString('hex');
         const team = getTeam();
 
@@ -782,7 +790,9 @@ wss.on('connection', ws => {
           jerseyNumber: user.profile.jerseyNumber,
           jerseyColor: user.profile.jerseyColor,
           team, ws, x: 0, y: 0, vx: 0, vy: 0,
-          keys: { up: false, down: false, left: false, right: false }
+          keys: { up: false, down: false, left: false, right: false },
+          hasBall: false,
+          slowTimer: 0
         };
 
         players.set(id, player);
@@ -799,6 +809,24 @@ wss.on('connection', ws => {
       player.keys.down = !!data.down;
       player.keys.left = !!data.left;
       player.keys.right = !!data.right;
+
+      // TOP KAPMA (TACKLE / BOŞLUK TUŞU)
+      if (data.tackle && player.slowTimer <= 0) {
+        let success = false;
+        for (const other of players.values()) {
+          if (other.id !== player.id && Math.hypot(other.x - player.x, other.y - player.y) < 60) {
+            if (other.hasBall) {
+              other.hasBall = false;
+              player.hasBall = true;
+              success = true;
+              break;
+            }
+          }
+        }
+        if (!success) {
+          player.slowTimer = 60; // 60 frame (1 saniye) yavaşlama cezası
+        }
+      }
     }
   });
 
@@ -810,57 +838,76 @@ wss.on('connection', ws => {
   });
 });
 
-// FİZİK MOTORU
+// FİZİK MOTORU & KONTROL MEKANİĞİ
 setInterval(() => {
   for (const p of players.values()) {
+    if (p.slowTimer > 0) p.slowTimer--;
+
+    const currentSpeed = p.slowTimer > 0 ? PLAYER_SPEED * 0.45 : PLAYER_SPEED;
     const dx = (p.keys.right ? 1 : 0) - (p.keys.left ? 1 : 0);
     const dy = (p.keys.down ? 1 : 0) - (p.keys.up ? 1 : 0);
+
     if (dx || dy) {
       const len = Math.hypot(dx, dy);
-      p.vx = (dx / len) * PLAYER_SPEED;
-      p.vy = (dy / len) * PLAYER_SPEED;
+      p.vx = (dx / len) * currentSpeed;
+      p.vy = (dy / len) * currentSpeed;
     } else {
       p.vx *= 0.75; p.vy *= 0.75;
     }
+
     p.x = Math.max(FIELD.x + PLAYER_RADIUS, Math.min(FIELD.x + FIELD.width - PLAYER_RADIUS, p.x + p.vx));
     p.y = Math.max(FIELD.y + PLAYER_RADIUS, Math.min(FIELD.y + FIELD.height - PLAYER_RADIUS, p.y + p.vy));
-  }
 
-  // Top Çarpışmaları
-  for (const p of players.values()) {
-    const dx = ball.x - p.x;
-    const dy = ball.y - p.y;
-    const dist = Math.hypot(dx, dy);
-    const minDist = PLAYER_RADIUS + BALL_RADIUS;
-    if (dist < minDist) {
-      const nx = dx / dist;
-      const ny = dy / dist;
-      ball.x = p.x + nx * minDist;
-      ball.y = p.y + ny * minDist;
-      ball.vx += nx * 3 + p.vx * 0.5;
-      ball.vy += ny * 3 + p.vy * 0.5;
+    // EĞER OYUNCU TOPA SAHİPSE, TOPU YANINDA TAŞI
+    if (p.hasBall) {
+      ball.x = p.x + (p.team === 'blue' ? 18 : -18);
+      ball.y = p.y;
+      ball.vx = p.vx;
+      ball.vy = p.vy;
     }
   }
 
-  ball.x += ball.vx;
-  ball.y += ball.vy;
-  ball.vx *= 0.99;
-  ball.vy *= 0.99;
+  // TOP TEMAS KONTROLÜ
+  for (const p of players.values()) {
+    const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
+    if (dist < PLAYER_RADIUS + BALL_RADIUS) {
+      // Topu ayağına alma
+      for (const other of players.values()) other.hasBall = false;
+      p.hasBall = true;
+      ball.vx = p.vx * 1.2;
+      ball.vy = p.vy * 1.2;
+    }
+  }
 
-  // Duvar Sekmeleri
-  if (ball.y - BALL_RADIUS < FIELD.y) { ball.y = FIELD.y + BALL_RADIUS; ball.vy *= -0.9; }
-  if (ball.y + BALL_RADIUS > FIELD.y + FIELD.height) { ball.y = FIELD.y + FIELD.height - BALL_RADIUS; ball.vy *= -0.9; }
+  if (![...players.values()].some(p => p.hasBall)) {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    ball.vx *= 0.98;
+    ball.vy *= 0.98;
+  }
+
+  // Duvar ve Kaleler
+  if (ball.y - BALL_RADIUS < FIELD.y) { ball.y = FIELD.y + BALL_RADIUS; ball.vy *= -0.8; }
+  if (ball.y + BALL_RADIUS > FIELD.y + FIELD.height) { ball.y = FIELD.y + FIELD.height - BALL_RADIUS; ball.vy *= -0.8; }
 
   const goalTop = FIELD.y + FIELD.height / 2 - GOAL.height / 2;
   const goalBot = FIELD.y + FIELD.height / 2 + GOAL.height / 2;
 
   if (ball.x - BALL_RADIUS < FIELD.x) {
-    if (ball.y > goalTop && ball.y < goalBot) { redScore++; resetPlayers(); return; }
-    ball.x = FIELD.x + BALL_RADIUS; ball.vx *= -0.9;
+    if (ball.y > goalTop && ball.y < goalBot) {
+      redScore++;
+      resetPlayers();
+      return;
+    }
+    ball.x = FIELD.x + BALL_RADIUS; ball.vx *= -0.8;
   }
   if (ball.x + BALL_RADIUS > FIELD.x + FIELD.width) {
-    if (ball.y > goalTop && ball.y < goalBot) { blueScore++; resetPlayers(); return; }
-    ball.x = FIELD.x + FIELD.width - BALL_RADIUS; ball.vx *= -0.9;
+    if (ball.y > goalTop && ball.y < goalBot) {
+      blueScore++;
+      resetPlayers();
+      return;
+    }
+    ball.x = FIELD.x + FIELD.width - BALL_RADIUS; ball.vx *= -0.8;
   }
 }, 1000 / 60);
 
@@ -871,7 +918,7 @@ setInterval(() => {
     type: 'state',
     players: [...players.values()].map(p => ({
       id: p.id, name: p.name, jerseyNumber: p.jerseyNumber, jerseyColor: p.jerseyColor, team: p.team,
-      x: Math.round(p.x), y: Math.round(p.y)
+      x: Math.round(p.x), y: Math.round(p.y), slowTimer: p.slowTimer
     })),
     ball: { x: Math.round(ball.x), y: Math.round(ball.y) },
     score: { blue: blueScore, red: redScore },
