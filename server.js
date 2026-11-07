@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Mini Futbol 8v8 — oyun sunucusu
+ * SoccerOnline v1.1 — oyun sunucusu
  * Tek bağımlılık: ws. Statik dosyalar (gzip'li) + WebSocket oyun odaları.
  */
 const http = require('http');
@@ -14,7 +14,7 @@ const PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUB = path.join(__dirname, 'public');
 
 // ---------------------------------------------------------------- ayarlar
-const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6 };
+const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6, RING: 26 }; // RING: şut çemberi yarıçapı (v1.1)
 const ROOM_COUNT = 3;
 const MAX_PLAYERS = 16;
 const SLOTS = 8;
@@ -36,7 +36,11 @@ const FORMATIONS = {
   '3-1-3': [['KL', .05, .5], ['SLB', .2, .18], ['STP', .2, .5], ['SĞB', .2, .82], ['OS', .45, .5], ['SLK', .82, .16], ['FV', .9, .5], ['SĞK', .82, .84]],
 };
 
-const P = { accel: 0.12, sprint: 0.165, damp: 0.96, im: 0.5, rest: 0.3, stamDrain: 0.0035, stamRegen: 0.0018 };
+// v1.1: damp 0.96 -> 0.92 (durma sonrası kayma %50 azaldı); maksimum hız = accel*damp/(1-damp) olduğundan
+// accel/sprint yeniden hesaplandı: yürüme 2.88 -> 3.168 ve koşu 3.96 -> 4.356 (+%10).
+// stamDrain 0.0035 / 1.25 (stamina %25 daha uzun dayanır).
+const P = { accel: 0.2755, sprint: 0.3788, damp: 0.92, im: 0.5, rest: 0.3, stamDrain: 0.0028, stamRegen: 0.0018 };
+const KICK_CHARGE_SECONDS = 0.675; // v1.1: 0.75 sn -> %10 daha hızlı şut dolumu
 const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14 };
 
 // ---------------------------------------------------------------- yardımcılar
@@ -384,7 +388,7 @@ class Room {
     const e = c.e, b = this.ball;
     if (e.kickCd > 0) return false;
     const dx = b.x - e.x, dy = b.y - e.y, d = Math.hypot(dx, dy);
-    if (d > e.r + b.r + 6) return false;
+    if (d > CFG.RING + b.r) return false; // top çembere 1 px bile girse vurulabilir
     const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
     const str = 3 + 8 * e.pending.p;
     b.vx = b.vx * 0.3 + nx * str;
@@ -424,7 +428,7 @@ class Room {
       e.vy = (e.vy + ay * acc) * P.damp;
 
       if (!frozen) {
-        if (inp.k) { e.charge = Math.min(1, e.charge + DT / 0.75); e.holding = true; }
+        if (inp.k) { e.charge = Math.min(1, e.charge + DT / KICK_CHARGE_SECONDS); e.holding = true; }
         else if (e.holding) { e.holding = false; e.pending = { p: 0.3 + 0.7 * e.charge, ttl: 6 }; e.charge = 0; }
       } else { e.charge = 0; e.holding = false; e.pending = null; }
       if (e.kickCd > 0) e.kickCd--;
@@ -659,7 +663,7 @@ function start(port) {
     }
   }, 25000);
 
-  server.listen(port, () => console.log('Mini Futbol hazır: http://localhost:' + server.address().port));
+  server.listen(port, () => console.log('SoccerOnline v1.1 hazır: http://localhost:' + server.address().port));
   return { server, wss, stop() { clearInterval(loop); clearInterval(hb); wss.close(); server.close(); } };
 }
 

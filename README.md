@@ -1,6 +1,13 @@
-# Mini Futbol 8v8
+# SoccerOnline v1.1 (8v8)
 
 Haxball x PES tarzı online futbol. Node.js + ws (sunucu), saf HTML/CSS/JS (istemci).
+
+## v1.1 Yenilikleri
+- Durduktan sonraki kayma %50 azaldı
+- Karakter hızı %10 arttı
+- Stamina %25 arttı
+- Şut dolum süresi %10 azaldı
+- Karakter etrafında şut çemberi: top çembere 1 piksel bile girse vurulabilir
 
 ## Render'a kurulum
 1. Bu klasörü bir GitHub deposuna yükle.
