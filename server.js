@@ -1,6 +1,6 @@
 'use strict';
 /**
- * SoccerOnline v1.1 — oyun sunucusu
+ * SoccerOnline v1.2 — oyun sunucusu
  * Tek bağımlılık: ws. Statik dosyalar (gzip'li) + WebSocket oyun odaları.
  */
 const http = require('http');
@@ -14,9 +14,13 @@ const PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUB = path.join(__dirname, 'public');
 
 // ---------------------------------------------------------------- ayarlar
-const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6, RING: 26 }; // RING: şut çemberi yarıçapı (v1.1)
-const ROOM_COUNT = 3;
-const MAX_PLAYERS = 16;
+const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6, RING: 26, BOX_W: 170, BOX_H: 360 };
+// RING: şut çemberi yarıçapı (v1.1) • BOX_W/BOX_H: kalecinin topu eline alabildiği ceza sahası (v1.2)
+const DEFAULT_MAX = 16;      // v1.2: sunucu kapasitesi 16..64 (8v8 oyuncu + taraftar)
+const MIN_MAX = 16;
+const MAX_MAX = 64;
+const MAX_ROOMS = 40;
+const HOLD_SECONDS = 5;      // v1.2: kaleci topu en fazla 5 sn tutabilir
 const SLOTS = 8;
 const MATCH_SECONDS = 300;
 const START_COUNTDOWN = 5;
@@ -51,6 +55,7 @@ const clampInt = (v, a, b, d) => {
   v = parseInt(v, 10);
   return Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d;
 };
+const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
 function slotPos(formation, slot, team) {
@@ -122,9 +127,18 @@ function clampBall(b) {
 
 // ---------------------------------------------------------------- oda
 class Room {
-  constructor(id) {
+  constructor(id, opts) {
+    opts = opts || {};
     this.id = id;
-    this.name = 'Sunucu ' + (id + 1);
+    this.name = opts.name || 'Sunucu ' + id;
+    this.max = clampInt(opts.max, MIN_MAX, MAX_MAX, DEFAULT_MAX);
+    this.passHash = null;
+    this.setPass(opts.pass);
+    this.ownerId = null;
+    this.creatorIp = opts.ip || '';
+    this.banned = new Map();
+    this.holder = null;
+    this.dead = false;
     this.clients = new Map();
     this.frame = 0;
     this.posts = [];
@@ -156,6 +170,21 @@ class Room {
     if (!silent) this.pushState();
   }
 
+  // ---- parola (v1.2)
+  hashPass(p) { return crypto.createHash('sha256').update('so:' + this.id + ':' + p).digest(); }
+  setPass(p) { p = typeof p === 'string' ? p.trim().slice(0, 20) : ''; this.passHash = p ? this.hashPass(p) : null; }
+  checkPass(p) {
+    if (!this.passHash) return true;
+    if (typeof p !== 'string') return false;
+    return crypto.timingSafeEqual(this.hashPass(p.trim().slice(0, 20)), this.passHash);
+  }
+  isBanned(ip) {
+    const t = this.banned.get(ip);
+    if (!t) return false;
+    if (t < Date.now()) { this.banned.delete(ip); return false; }
+    return true;
+  }
+
   // ---- iletişim
   send(c, str) { if (c.ws.readyState === 1) c.ws.send(str); }
   broadcast(str, skipSlow) {
@@ -168,23 +197,26 @@ class Room {
   stateMsg() {
     const teams = this.teams.map((t) => ({ n: t.name, c: t.color, f: t.formation, cap: t.captain, rd: t.ready, sl: t.slots }));
     const players = [];
-    for (const c of this.clients.values()) players.push({ id: c.id, n: c.name, u: c.num, tm: c.team, sl: c.slot });
-    return JSON.stringify({ t: 'state', ph: this.phase, sc: this.score, teams, players, goals: this.goals });
+    for (const c of this.clients.values()) players.push({ id: c.id, n: c.name, u: c.num, tm: c.team, sl: c.slot, ft: c.fan });
+    return JSON.stringify({ t: 'state', ph: this.phase, sc: this.score, teams, players, goals: this.goals, own: this.ownerId, lock: !!this.passHash, max: this.max });
   }
   pushState() { this.broadcast(this.stateMsg()); }
   info() {
-    return { id: this.id, name: this.name, count: this.clients.size, max: MAX_PLAYERS, ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
+    const o = this.clients.get(this.ownerId);
+    return { id: this.id, name: this.name, count: this.clients.size, max: this.max, lock: !!this.passHash, own: o ? o.name : '', ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
   }
 
   // ---- oyuncular
-  addClient(ws, name, number) {
+  addClient(ws, name, number, ip) {
     const c = {
-      id: ++Room.nextId, ws, name, num: number, team: -1, slot: -1, takenAt: 0,
-      inp: { dx: 0, dy: 0, s: false, k: false },
-      e: { x: 0, y: 0, vx: 0, vy: 0, r: CFG.R, im: P.im, charge: 0, holding: false, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0 },
+      id: ++Room.nextId, ws, name, num: number, team: -1, slot: -1, takenAt: 0, ip: ip || '', fan: -1, lastSay: 0,
+      inp: { dx: 0, dy: 0, s: false, k: false, g: false },
+      e: { x: 0, y: 0, vx: 0, vy: 0, r: CFG.R, im: P.im, charge: 0, holding: false, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0,
+        fx: 1, fy: 0, hold: false, holdT: 0, grabCd: 0 },
     };
     this.clients.set(c.id, c);
-    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: CFG, forms: FORMATIONS, max: MAX_PLAYERS }));
+    if (this.ownerId == null) this.ownerId = c.id;
+    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: CFG, forms: FORMATIONS, max: this.max }));
     this.pushState();
     this.send(c, this.statsMsg());
     return c;
@@ -194,8 +226,10 @@ class Room {
     if (!this.clients.has(c.id)) return;
     this.freeSlot(c);
     this.clients.delete(c.id);
-    if (this.clients.size === 0) this.resetAll();
-    else this.pushState();
+    if (this.holder === c) this.holder = null;
+    if (this.clients.size === 0) { this.dead = true; rooms.delete(this.id); return; }   // v1.2: boş sunucu kapanır
+    if (this.ownerId === c.id) this.ownerId = this.clients.keys().next().value;       // sahip çıkarsa sıradaki sahip olur
+    this.pushState();
   }
 
   freeSlot(c) {
@@ -228,7 +262,7 @@ class Room {
     t.slots[slot] = c.id;
     c.team = team; c.slot = slot; c.takenAt = Date.now() + Math.random();
     if (t.captain == null) { t.captain = c.id; t.ready = false; }
-    c.inp = { dx: 0, dy: 0, s: false, k: false };
+    c.inp = { dx: 0, dy: 0, s: false, k: false, g: false };
     this.placeEnt(c);
     this.pushState();
   }
@@ -273,15 +307,52 @@ class Room {
         const i = c.inp;
         i.dx = Math.max(-1, Math.min(1, num(m.dx)));
         i.dy = Math.max(-1, Math.min(1, num(m.dy)));
-        i.s = !!m.s; i.k = !!m.k;
+        i.s = !!m.s; i.k = !!m.k; i.g = !!m.g;
         break;
       }
+      case 'kick': this.kickPlayer(c, m.id); break;
+      case 'setpass': this.ownerPass(c, m.v); break;
+      case 'support': {
+        const v = m.v === 0 || m.v === 1 ? m.v : -1;
+        if (c.fan !== v) { c.fan = v; this.pushState(); }
+        break;
+      }
+      case 'say': this.say(c, m.txt); break;
       case 'take': this.take(c, m.team, m.slot); break;
       case 'leave': this.leave(c); break;
       case 'team': this.setTeam(c, m); break;
       case 'ready': this.setReady(c, m.v); break;
       default: break;
     }
+  }
+
+  // ---- sunucu sahibi (v1.2)
+  kickPlayer(c, id) {
+    if (c.id !== this.ownerId) return;
+    const t = this.clients.get(id);
+    if (!t || t === c) return;
+    if (t.ip) this.banned.set(t.ip, Date.now() + 60000);   // 1 dk geri giremez
+    this.send(t, JSON.stringify({ t: 'err', m: 'Sunucu sahibi seni attı' }));
+    this.removeClient(t);
+    try { t.ws.close(); } catch (e) { /* yoksay */ }
+  }
+
+  ownerPass(c, v) {
+    if (c.id !== this.ownerId) return;
+    this.setPass(v);
+    this.pushState();
+    this.send(c, JSON.stringify({ t: 'info', m: this.passHash ? 'Parola ayarlandı' : 'Parola kaldırıldı' }));
+  }
+
+  // ---- taraftar sohbeti (v1.2): sadece oyuna girmemiş taraftarlar tribünden konuşur
+  say(c, txt) {
+    if (c.slot >= 0) return;
+    const now = Date.now();
+    if (now - c.lastSay < 1200) return;
+    const t = clean(txt, 60);
+    if (!t) return;
+    c.lastSay = now;
+    this.broadcast(JSON.stringify({ t: 'say', id: c.id, n: c.name, ft: c.fan, txt: t }), true);
   }
 
   // ---- maç akışı
@@ -291,6 +362,8 @@ class Room {
     const e = c.e;
     e.x = p.x; e.y = p.y; e.vx = 0; e.vy = 0;
     e.charge = 0; e.holding = false; e.pending = null; e.kickCd = 0; e.stam = 1; e.tired = false; e.sp = 0;
+    e.hold = false; e.holdT = 0; e.grabCd = 0; e.fx = c.team === 0 ? 1 : -1; e.fy = 0;
+    if (this.holder === c) this.holder = null;
   }
 
   resetPositions() {
@@ -399,9 +472,56 @@ class Room {
     return true;
   }
 
+  // ---- kaleci (v1.2)
+  inBox(team, x, y) {
+    const { W, H, BOX_W, BOX_H } = CFG;
+    if (Math.abs(y - H / 2) > BOX_H / 2) return false;
+    return team === 0 ? x <= BOX_W : x >= W - BOX_W;
+  }
+
+  dropBall(c) {
+    const e = c.e;
+    e.hold = false; e.holdT = 0; e.grabCd = 60;
+    if (this.holder === c) this.holder = null;
+    this.ball.vx = 0; this.ball.vy = 0;
+  }
+
+  throwBall(c, p, auto) {
+    const e = c.e, b = this.ball, str = 3 + 8 * p;
+    let fx = e.fx, fy = e.fy;
+    if (auto) { // süre dolunca top rakip kaleye doğru atılır
+      fx = c.team === 0 ? 1 : -1; fy = e.fy * 0.5;
+      const l = Math.hypot(fx, fy); fx /= l; fy /= l;
+    }
+    e.hold = false; e.holdT = 0; e.grabCd = 90; e.kickCd = 10; e.charge = 0;
+    if (this.holder === c) this.holder = null;
+    b.vx = fx * str; b.vy = fy * str;
+    this.touch(c);
+    this.registerKick(c);
+  }
+
+  keeperStep(c, frozen) {
+    const e = c.e, b = this.ball;
+    if (e.grabCd > 0) e.grabCd--;
+    if (e.hold) {
+      if (frozen || !this.inBox(c.team, e.x, e.y)) { this.dropBall(c); return; }   // kale sahası dışında tutulamaz
+      if (e.pending) { const p = e.pending.p; e.pending = null; this.throwBall(c, p, false); return; }
+      if (--e.holdT <= 0) this.throwBall(c, 0.55, true);                          // 5 sn doldu: oyunu başlat
+      return;
+    }
+    if (frozen || !c.inp.g || e.grabCd > 0 || this.holder) return;
+    if (!this.inBox(c.team, e.x, e.y) || !this.inBox(c.team, b.x, b.y)) return;  // sadece kale sahası içinde
+    if (Math.hypot(b.x - e.x, b.y - e.y) > CFG.RING + b.r) return;
+    e.hold = true; e.holdT = HOLD_SECONDS * HZ; e.pending = null;
+    this.holder = c;
+    b.vx = 0; b.vy = 0;
+    this.touch(c);
+  }
+
   stepPlay(frozen) {
     const ents = [];
     for (const c of this.clients.values()) if (c.slot >= 0) ents.push(c);
+    if (this.holder && (!this.holder.e.hold || this.holder.slot !== 0 || !this.clients.has(this.holder.id))) this.holder = null;
 
     for (const c of ents) {
       const e = c.e, inp = c.inp;
@@ -412,6 +532,7 @@ class Room {
         if (l > 1) { ax /= l; ay /= l; }
       }
       const moving = ax !== 0 || ay !== 0;
+      if (moving) { const l = Math.hypot(ax, ay); e.fx = ax / l; e.fy = ay / l; }
       let acc = P.accel;
       const sprint = !frozen && inp.s && moving && !e.tired && e.stam > 0;
       e.sp = sprint ? 1 : 0;
@@ -424,6 +545,7 @@ class Room {
         if (e.tired && e.stam > 0.25) e.tired = false;
       }
       if (inp.k && !frozen) acc *= 0.7;
+      if (e.hold) acc *= 0.85;
       e.vx = (e.vx + ax * acc) * P.damp;
       e.vy = (e.vy + ay * acc) * P.damp;
 
@@ -437,25 +559,36 @@ class Room {
     }
 
     const b = this.ball;
-    b.x += b.vx; b.y += b.vy;
-    b.vx *= B.damp; b.vy *= B.damp;
-    if (Math.abs(b.vx) < 0.005) b.vx = 0;
-    if (Math.abs(b.vy) < 0.005) b.vy = 0;
+    if (!this.holder) {
+      b.x += b.vx; b.y += b.vy;
+      b.vx *= B.damp; b.vy *= B.damp;
+      if (Math.abs(b.vx) < 0.005) b.vx = 0;
+      if (Math.abs(b.vy) < 0.005) b.vy = 0;
+    }
 
     for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) collide(ents[i].e, ents[j].e, P.rest);
-    for (const c of ents) if (collide(c.e, b, B.hitRest)) this.touch(c);
-    for (const c of ents) {
-      const e = c.e;
-      if (e.pending) {
-        if (this.tryKick(c)) e.pending = null;
-        else if (--e.pending.ttl <= 0) e.pending = null;
+    for (const c of ents) if (c.slot === 0) this.keeperStep(c, frozen);
+
+    if (this.holder) {   // top kalecinin elinde: fizik yok, kalecinin önünde taşınır
+      const e = this.holder.e, off = CFG.R + CFG.BR + 2;
+      b.x = clampN(e.x + e.fx * off, CFG.BR + 2, CFG.W - CFG.BR - 2);
+      b.y = clampN(e.y + e.fy * off, CFG.BR + 2, CFG.H - CFG.BR - 2);
+      b.vx = 0; b.vy = 0;
+    } else {
+      for (const c of ents) if (collide(c.e, b, B.hitRest)) this.touch(c);
+      for (const c of ents) {
+        const e = c.e;
+        if (e.pending) {
+          if (this.tryKick(c)) e.pending = null;
+          else if (--e.pending.ttl <= 0) e.pending = null;
+        }
       }
+      clampBall(b);
+      for (const p of this.posts) collide(b, p, 0.8);
+      clampBall(b);
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp > B.max) { b.vx *= B.max / sp; b.vy *= B.max / sp; }
     }
-    clampBall(b);
-    for (const p of this.posts) collide(b, p, 0.8);
-    clampBall(b);
-    const sp = Math.hypot(b.vx, b.vy);
-    if (sp > B.max) { b.vx *= B.max / sp; b.vy *= B.max / sp; }
     for (const c of ents) clampPlayer(c.e);
   }
 
@@ -506,7 +639,7 @@ class Room {
     for (const c of this.clients.values()) {
       if (c.slot < 0) continue;
       const e = c.e;
-      p.push([c.id, r1(e.x), r1(e.y), Math.round(e.charge * 100), Math.round(e.stam * 100), e.sp]);
+      p.push([c.id, r1(e.x), r1(e.y), Math.round(e.charge * 100), Math.round(e.stam * 100), e.sp, e.hold ? Math.max(1, Math.round(e.holdT / 6)) : 0]);
     }
     return JSON.stringify({ t: 's', r: r1(Math.max(0, this.matchTime)), c: r1(Math.max(0, this.timer)), p, b: [r1(this.ball.x), r1(this.ball.y)] });
   }
@@ -554,7 +687,14 @@ class Room {
 }
 Room.nextId = 0;
 
-const rooms = Array.from({ length: ROOM_COUNT }, (_, i) => new Room(i));
+// v1.2: sabit sunucular kaldırıldı — sunucuları oyuncular kurar
+const rooms = new Map();
+let roomSeq = 0;
+function createRoom(opts) {
+  const r = new Room(++roomSeq, opts);
+  rooms.set(r.id, r);
+  return r;
+}
 
 // ---------------------------------------------------------------- statik dosyalar
 const MIME = {
@@ -582,7 +722,7 @@ function loadStatic() {
 function handleHttp(req, res) {
   const url = (req.url || '/').split('?')[0];
   if (url === '/api/servers') {
-    const body = JSON.stringify(rooms.map((r) => r.info()));
+    const body = JSON.stringify([...rooms.values()].map((r) => r.info()));
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return res.end(body);
   }
@@ -608,7 +748,8 @@ function start(port) {
   const server = http.createServer(handleHttp);
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 2048, perMessageDeflate: false });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || (req.socket && req.socket.remoteAddress) || '').trim();
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
     let client = null, room = null;
@@ -623,16 +764,27 @@ function start(port) {
       try { m = JSON.parse(raw.toString()); } catch (e) { return; }
       if (!m || typeof m.t !== 'string') return;
       if (!client) {
-        if (m.t !== 'join') return;
-        const r = rooms[parseInt(m.room, 10)];
-        if (!r) { ws.close(); return; }
-        if (r.clients.size >= MAX_PLAYERS) {
-          ws.send(JSON.stringify({ t: 'err', m: 'Sunucu dolu (16/16)' }));
-          ws.close();
-          return;
+        const pname = clean(m.t === 'create' ? m.pname : m.name, 14) || 'Oyuncu';
+        const pnum = clampInt(m.num, 1, 99, 10);
+        const fail = (msg) => { ws.send(JSON.stringify({ t: 'err', m: msg })); ws.close(); };
+        if (m.t === 'join') {
+          const r = rooms.get(parseInt(m.room, 10));
+          if (!r) return fail('Sunucu bulunamadı');
+          if (r.clients.size >= r.max) return fail('Sunucu dolu (' + r.max + '/' + r.max + ')');
+          if (r.isBanned(ip)) return fail('Bu sunucudan atıldın, biraz bekle');
+          if (!r.checkPass(m.pass)) return fail('Parola yanlış');
+          room = r;
+          client = r.addClient(ws, pname, pnum, ip);
+        } else if (m.t === 'create') {
+          if (rooms.size >= MAX_ROOMS) return fail('Sunucu sınırına ulaşıldı, daha sonra dene');
+          let mine = 0;
+          for (const r of rooms.values()) if (r.creatorIp === ip) mine++;
+          if (mine >= 3) return fail('En fazla 3 sunucu kurabilirsin');
+          const sname = clean(m.name, 24);
+          if (!sname) return fail('Sunucu ismi gerekli');
+          room = createRoom({ name: sname, max: m.max, pass: m.pass, ip });
+          client = room.addClient(ws, pname, pnum, ip);
         }
-        room = r;
-        client = r.addClient(ws, clean(m.name, 14) || 'Oyuncu', clampInt(m.num, 1, 99, 10));
         return;
       }
       room.onMsg(client, m);
@@ -650,7 +802,7 @@ function start(port) {
     const step = 1000 / HZ;
     while (acc >= step) {
       acc -= step;
-      for (const r of rooms) if (r.active) r.tick();
+      for (const r of rooms.values()) if (r.active) r.tick();
     }
   }, 8);
 
@@ -663,10 +815,10 @@ function start(port) {
     }
   }, 25000);
 
-  server.listen(port, () => console.log('SoccerOnline v1.1 hazır: http://localhost:' + server.address().port));
+  server.listen(port, () => console.log('SoccerOnline v1.2 hazır: http://localhost:' + server.address().port));
   return { server, wss, stop() { clearInterval(loop); clearInterval(hb); wss.close(); server.close(); } };
 }
 
 if (require.main === module) start(PORT);
 
-module.exports = { Room, rooms, start, CFG, FORMATIONS, slotPos, MATCH_SECONDS, DT };
+module.exports = { Room, rooms, createRoom, start, CFG, FORMATIONS, slotPos, MATCH_SECONDS, DT };

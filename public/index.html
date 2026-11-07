@@ -15,32 +15,62 @@
   <div class="brand">
     <div class="logo"></div>
     <h1>SOCCER<span>ONLINE</span></h1>
-    <p>8v8 online &bull; Haxball &times; PES &bull; v1.1</p>
+    <p>8v8 online &bull; Haxball &times; PES &bull; v1.2</p>
   </div>
   <form id="menuForm" class="card" autocomplete="off">
     <label><span>Forma numarası</span><input id="inNum" type="number" inputmode="numeric" min="1" max="99" value="10"></label>
     <label><span>Oyuncu adı</span><input id="inName" type="text" maxlength="14" placeholder="İsmin"></label>
     <button class="btn primary" type="submit">OYNA</button>
   </form>
-  <section class="news" aria-label="v1.1 yenilikleri">
-    <h3>v1.1 Yenilikleri</h3>
+  <section class="news" aria-label="v1.2 yenilikleri">
+    <h3>v1.2 Yenilikleri</h3>
     <ul>
-      <li><b>Daha tok duruş:</b> Durduktan sonraki kayma %50 azaldı</li>
-      <li><b>Daha hızlı oyuncular:</b> Karakter hızı %10 arttı</li>
-      <li><b>Daha uzun koşu:</b> Stamina %25 arttı</li>
-      <li><b>Daha çabuk şut:</b> Şut dolum süresi %10 azaldı</li>
-      <li><b>Şut çemberi:</b> Karakterin etrafında küçük bir çember var; top çembere 1 piksel bile girse vurabilirsin</li>
+      <li><b>Taraftar:</b> Oynamayanlar tribüne oturur, takım tutar ve tribünden bir şeyler söyler</li>
+      <li><b>Kaleci eliyle tutar:</b> Kale sahası içinde topu al, 5 saniye içinde oyunu başlat</li>
+      <li><b>Sol tık ile şut:</b> Fareyle de topa vurabilirsin (sağ tık = kaleci topu tutar)</li>
+      <li><b>Sunucu kur:</b> Sabit sunucular kalktı; sunucu listesinden katıl ya da kendi sunucunu kur</li>
+      <li><b>Parola ve yönetim:</b> Parola koy/kaldır, istediğini sunucudan at, kapasite 16–64</li>
     </ul>
+    <details>
+      <summary>v1.1 yenilikleri</summary>
+      <ul>
+        <li>Durma sonrası kayma %50 azaldı &bull; hız %10, stamina %25 arttı</li>
+        <li>Şut dolumu %10 hızlandı &bull; karakter etrafında şut çemberi</li>
+      </ul>
+    </details>
   </section>
-  <p class="hint">Hareket: <b>WASD / Oklar</b> &bull; Şut: <b>Boşluk / X</b> (basılı tut = güç) &bull; Koşu: <b>Shift</b> &bull; İstatistik: <b>Tab</b> (basılı tut)</p>
+  <p class="hint">Hareket: <b>WASD / Oklar</b> &bull; Şut: <b>Boşluk / X / Sol tık</b> (basılı tut = güç) &bull; Kaleci tut: <b>E / Sağ tık</b> &bull; Koşu: <b>Shift</b> &bull; İstatistik: <b>Tab</b> (basılı tut)</p>
 </main>
 
 <!-- 2) SUNUCU SEÇİMİ -->
 <main id="servers" class="screen center hidden">
-  <h2>Sunucu seç</h2>
+  <h2>Sunucu listesi</h2>
+  <button id="btnCreate" class="btn primary" type="button">+ Sunucu kur</button>
   <div id="serverList" class="slist"></div>
   <button id="btnBack" class="btn ghost" type="button">&larr; Geri</button>
 </main>
+
+<!-- 2b) SUNUCU KUR -->
+<main id="create" class="screen center hidden">
+  <h2>Sunucu kur</h2>
+  <form id="createForm" class="card" autocomplete="off">
+    <label><span>Sunucu ismi</span><input id="cName" type="text" maxlength="24" placeholder="Sunucu ismi" required></label>
+    <label><span>Kapasite: <b id="cMaxTxt">16</b> kişi</span><input id="cMax" type="range" min="16" max="64" step="1" value="16"></label>
+    <p class="note" id="cNote">8v8 maç (16 oyuncu) + 0 taraftar</p>
+    <label><span>Parola (isteğe bağlı)</span><input id="cPass" type="text" maxlength="20" placeholder="Boş bırak = parolasız"></label>
+    <button class="btn primary" type="submit">KUR VE GİR</button>
+  </form>
+  <button id="btnCreateBack" class="btn ghost" type="button">&larr; Geri</button>
+</main>
+
+<!-- parola penceresi -->
+<div id="pwModal" class="modal hidden">
+  <form id="pwForm" class="card" autocomplete="off">
+    <h3 id="pwTitle">Parola gerekli</h3>
+    <input id="pwInput" type="text" maxlength="20" placeholder="Parola">
+    <div class="row2"><button class="btn ghost" id="pwCancel" type="button">İptal</button><button class="btn primary" type="submit">GİR</button></div>
+  </form>
+</div>
 
 <!-- 3) MEVKİ SEÇME / LOBİ -->
 <main id="lobby" class="screen hidden">
@@ -65,6 +95,15 @@
     <section class="ctrl" id="ctrl1"></section>
   </div>
   <p id="specs" class="specs"></p>
+  <section id="owner" class="owner hidden">
+    <h3>Sunucu yönetimi</h3>
+    <div class="orow">
+      <input id="ownPass" type="text" maxlength="20" placeholder="Yeni parola">
+      <button id="btnSetPass" class="btn ghost small" type="button">Parola koy</button>
+      <button id="btnDelPass" class="btn ghost small" type="button">Parolayı kaldır</button>
+    </div>
+    <div id="ownList" class="olist"></div>
+  </section>
 </main>
 
 <!-- 4) OYUN -->
@@ -93,7 +132,8 @@
   </div>
 
   <div id="stamWrap" class="stamWrap"><span>KOŞU</span><div class="stam"><i id="stam"></i></div></div>
-  <div id="specBar" class="specBar hidden">İzleyicisin &mdash; <b>Mevkiler</b>'den boş bir yer seç</div>
+  <div id="holdHud" class="holdHud hidden"></div>
+  <div id="specBar" class="specBar hidden">Taraftarsın &mdash; oynamak için <b>Mevkiler</b>'den boş bir yer seç</div>
 
   <div id="banner" class="banner hidden">
     <div class="gol">GOL!</div>
@@ -117,10 +157,21 @@
     <div id="joy"><i id="knob"></i></div>
     <button id="tKick" type="button">ŞUT</button>
     <button id="tSprint" type="button">KOŞ</button>
+    <button id="tHold" type="button" class="hidden">TUT</button>
   </div>
   <div id="rotate" class="rotate">Telefonu yatay çevir</div>
 </div>
 
+<div id="feed" class="feed"></div>
+<form id="fanBar" class="fanBar hidden" autocomplete="off">
+  <div class="fsup"><span>Tuttuğun takım:</span>
+    <button type="button" id="fs0" class="fs"><i class="chip"></i><em></em></button>
+    <button type="button" id="fs1" class="fs"><i class="chip"></i><em></em></button>
+    <button type="button" id="fsN" class="fs">Tarafsız</button>
+  </div>
+  <div class="fchants" id="fchants"></div>
+  <div class="fsay"><input id="fanTxt" type="text" maxlength="60" placeholder="Tribünden bir şey söyle…"><button class="btn primary small" type="submit">SÖYLE</button></div>
+</form>
 <div id="toast" class="toast"></div>
 <script src="game.js"></script>
 </body>
