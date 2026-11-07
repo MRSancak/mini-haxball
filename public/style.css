@@ -206,3 +206,10 @@ input[type=color]{width:46px;height:38px;border:1px solid var(--line);border-rad
 .sclose{justify-self:center;color:var(--mut);font-size:11px}
 @media (max-width:760px){.posbar{width:70vw;top:calc(max(8px,env(safe-area-inset-top)) + 46px)}}
 .gbtns{z-index:7}
+
+/* ---------- v1.1 yenilikler ---------- */
+.news{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:14px;padding:14px 18px;text-align:left}
+.news h3{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+.news ul{list-style:none;display:grid;gap:6px;font-size:13px;line-height:1.45;color:var(--mut)}
+.news li::before{content:"\2713";color:#5de07a;font-weight:900;margin-right:8px}
+.news b{color:var(--txt)}

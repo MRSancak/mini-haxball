@@ -499,6 +499,10 @@ function drawPlayer(x, y, info, isMe, charge) {
   const R = cfg.R;
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   ctx.beginPath(); ctx.ellipse(x + 3, y + R * 0.75, R, R * 0.55, 0, 0, 6.2832); ctx.fill();
+  // v1.1: şut çemberi — top bu çembere değerse vurulabilir
+  ctx.save(); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+  ctx.strokeStyle = isMe ? 'rgba(255,255,255,.65)' : 'rgba(255,255,255,.3)';
+  ctx.beginPath(); ctx.arc(x, y, cfg.RING, 0, 6.2832); ctx.stroke(); ctx.restore();
   if (charge > 0) {
     ctx.strokeStyle = charge > 70 ? '#ff5252' : '#ffd23f'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(x, y, R + 6, -Math.PI / 2, -Math.PI / 2 + charge / 100 * 6.2832); ctx.stroke();
