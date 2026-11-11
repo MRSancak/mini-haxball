@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: socceronline
+    name: mini-futbol
     runtime: node
     plan: free
     buildCommand: npm install

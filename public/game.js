@@ -13,19 +13,15 @@ const inNum = $('#inNum'), inName = $('#inName');
 inNum.value = profile.num; inName.value = profile.name;
 
 // ------------------------------------------------------------------ durum
-const scr = { menu: $('#menu'), servers: $('#servers'), create: $('#create'), lobby: $('#lobby'), game: $('#game') };
-let ws = null, joined = false, lobbyOpen = false;
+const scr = { menu: $('#menu'), servers: $('#servers'), lobby: $('#lobby'), game: $('#game') };
+let ws = null, joined = false, lobbyOpen = false, wasKicked = false, maxP = 30;
 let st = null, cfg = null, forms = null;
 const me = { id: 0, team: -1, slot: -1 };
 const pinfo = new Map();      // id -> {color,num,name,team}
 let snapCur = null, snapPrev = null, curMap = new Map(), prevMap = new Map(), snapT = 0, snapInt = 33;
 let prevPhase = '';
 let lastStats = null;
-let bannerTimer = 0, toastTimer = 0, errAt = 0;
-let standH = 24;
-const fanSeats = new Map();   // id -> tribün koltuğu (v1.2)
-const bubbles = new Map();    // id -> {txt, until}
-let celeb = { team: -1, until: 0 };
+let bannerTimer = 0, toastTimer = 0;
 
 function toast(msg) {
   const t = $('#toast');
@@ -60,20 +56,15 @@ function phaseText(r) {
 function renderServers(list) {
   const box = $('#serverList');
   box.textContent = '';
-  if (!list.length) { box.append(mk('div', 'empty', 'Henüz açık sunucu yok. “Sunucu kur” ile ilk sunucuyu sen aç!')); return; }
-  list.sort((x, y) => y.count - x.count);
   for (const r of list) {
     const c = mk('div', 'srv');
     const left = mk('div');
-    const h = mk('h3', '', r.name);
-    if (r.lock) h.append(mk('span', 'lock', '\uD83D\uDD12'));
-    left.append(h, mk('div', 'st', phaseText(r)));
-    if (r.own) left.append(mk('div', 'own', 'Kurucu: ' + r.own));
+    left.append(mk('h3', '', r.name), mk('div', 'st', phaseText(r)));
     c.append(left, mk('div', 'cnt', r.count + '/' + r.max));
     const bar = mk('div', 'bar'); const fill = mk('i'); fill.style.width = (r.count / r.max * 100) + '%'; bar.append(fill);
     const b = mk('button', 'btn primary', r.count >= r.max ? 'DOLU' : 'KATIL');
     b.type = 'button'; b.disabled = r.count >= r.max;
-    b.addEventListener('click', () => (r.lock ? askPass(r) : join(r.id, '')));
+    b.addEventListener('click', () => join(r.id));
     c.append(bar, b);
     box.append(c);
   }
@@ -84,48 +75,13 @@ function loadServers() {
 }
 setInterval(loadServers, 2000);
 
-// sunucu kur (v1.2)
-const cMax = $('#cMax');
-function cMaxUpdate() {
-  const v = parseInt(cMax.value, 10) || 16;
-  $('#cMaxTxt').textContent = v;
-  $('#cNote').textContent = '8v8 maç (16 oyuncu) + ' + (v - 16) + ' taraftar';
-}
-cMax.addEventListener('input', cMaxUpdate);
-$('#btnCreate').addEventListener('click', () => show('create'));
-$('#btnCreateBack').addEventListener('click', () => show('servers'));
-$('#createForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = $('#cName').value.trim();
-  if (!name) { toast('Sunucu ismi gerekli'); return; }
-  connect({ t: 'create', name, max: parseInt(cMax.value, 10) || 16, pass: $('#cPass').value, pname: profile.name, num: profile.num });
-});
-
-// parola penceresi
-let pwRoom = null;
-function askPass(r) {
-  pwRoom = r;
-  $('#pwTitle').textContent = r.name + ' — parola gerekli';
-  $('#pwInput').value = '';
-  $('#pwModal').classList.remove('hidden');
-  setTimeout(() => $('#pwInput').focus(), 30);
-}
-$('#pwCancel').addEventListener('click', () => $('#pwModal').classList.add('hidden'));
-$('#pwForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (!pwRoom) return;
-  $('#pwModal').classList.add('hidden');
-  join(pwRoom.id, $('#pwInput').value);
-});
-
 // ------------------------------------------------------------------ bağlantı
-function join(room, pass) { connect({ t: 'join', room, name: profile.name, num: profile.num, pass: pass || '' }); }
-function connect(first) {
-  closeWs();
+function join(room) {
+  closeWs(); wasKicked = false;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const sock = new WebSocket(proto + '://' + location.host + '/ws');
   ws = sock;
-  sock.onopen = () => sock.send(JSON.stringify(first));
+  sock.onopen = () => sock.send(JSON.stringify({ t: 'join', room, name: profile.name, num: profile.num }));
   sock.onmessage = (ev) => {
     if (sock !== ws) return;
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -135,15 +91,14 @@ function connect(first) {
     if (sock !== ws) return;
     const was = joined;
     ws = null; joined = false; st = null; snapCur = snapPrev = null; lobbyOpen = false;
-    keys.clear(); pushInput(); resetFans();
-    if (was && Date.now() - errAt > 1500) toast('Bağlantı koptu');
+    keys.clear(); pushInput();
+    if (was && !wasKicked) toast('Bağlantı koptu');
     show('servers');
   };
 }
 function closeWs() {
   if (ws) { const s = ws; ws = null; try { s.close(); } catch (e) { /* yoksay */ } }
   joined = false; st = null; snapCur = snapPrev = null; lobbyOpen = false;
-  resetFans();
 }
 function leaveRoom() { closeWs(); keys.clear(); lastKey = ''; show('servers'); }
 $('#btnLeave').addEventListener('click', leaveRoom);
@@ -154,14 +109,13 @@ $('#btnCloseLobby').addEventListener('click', () => { lobbyOpen = false; updateV
 function onMsg(m) {
   switch (m.t) {
     case 'hi':
-      me.id = m.id; cfg = m.cfg; forms = m.forms; joined = true; lastStats = null; setPanel(false);
+      me.id = m.id; cfg = m.cfg; forms = m.forms; maxP = m.max || maxP; joined = true; lastStats = null; setPanel(false);
       $('#lobbyTitle').textContent = m.room;
       for (const c of ctrl) c.fillForms();
       resize();
       break;
-    case 'err': errAt = Date.now(); toast(m.m || 'Hata'); break;
-    case 'info': toast(m.m || ''); break;
-    case 'say': onSay(m); break;
+    case 'err': toast(m.m || 'Hata'); break;
+    case 'kicked': wasKicked = true; toast(m.m || 'Sunucudan atıldın'); break;
     case 'state': onState(m); break;
     case 's': onSnap(m); break;
     case 'stats':
@@ -169,7 +123,7 @@ function onMsg(m) {
       if (statsVisible()) renderStats($('#statsBody'));
       if (!$('#end').classList.contains('hidden')) renderStats($('#endStats'));
       break;
-    case 'goal': celeb = { team: m.tm, until: performance.now() + 5000 }; onGoal(m); break;
+    case 'goal': onGoal(m); break;
     default: break;
   }
 }
@@ -282,37 +236,44 @@ function renderLobby() {
     c.ready.textContent = tm.rd ? 'HAZIR ✓ (iptal et)' : 'HAZIR OL';
   }
 
-  $('#lobbyInfo').textContent = st.players.length + '/' + st.max + ' kişi' + (st.lock ? ' • parolalı' : '');
+  const adm = st.players.find((p) => p.id === st.ad);
+  $('#lobbyInfo').textContent = st.players.length + '/' + maxP + ' oyuncu' + (adm ? ' • Admin: ' + adm.n + (adm.id === me.id ? ' (sen)' : '') : '');
+  renderAdmin(byId);
   let hint;
   if (!inLobby) hint = 'Maç sürüyor — boş bir mevki seçerek oyuna katılabilirsin.';
-  else if (me.slot < 0) hint = 'Bir mevki seç (ilk oturan kaptan olur) ya da taraftar olarak tribünden destek ver.';
+  else if (me.slot < 0) hint = 'Bir mevki seç. Takımda ilk oturan kaptan olur.';
   else if (st.teams[me.team].cap === me.id) hint = 'Kaptansın: takımını ayarla ve HAZIR OL\'a bas. İki kaptan hazır olunca maç başlar.';
-  else hint = 'Kaptanın hazır olmasını bekle. Mevkine tekrar tıklarsan taraftar olursun.';
+  else hint = 'Kaptanın hazır olmasını bekle. Mevkine tekrar tıklarsan izleyici olursun.';
   $('#lobbyHint').textContent = hint;
-  const sp = st.players.filter((p) => p.tm < 0).map((p) => p.n);
-  $('#specs').textContent = sp.length ? 'Taraftarlar (' + sp.length + '): ' + sp.join(', ') : '';
-  renderOwner();
+  const sp = st.players.filter((p) => p.tm < 0).map((p) => '#' + p.u + ' ' + p.n);
+  $('#specs').textContent = sp.length ? 'İzleyiciler: ' + sp.join(', ') : '';
 }
 
-function renderOwner() {
-  const own = st && st.own === me.id;
-  $('#owner').classList.toggle('hidden', !own);
-  if (!own) return;
-  const list = $('#ownList');
+// ------------------------------------------------------------------ admin paneli
+function renderAdmin(byId) {
+  const isAdmin = st.ad === me.id;
+  const box = $('#adminBox');
+  box.classList.toggle('hidden', !isAdmin);
+  if (!isAdmin) return;
+  const others = st.players.filter((p) => p.id !== me.id);
+  const idle = others.filter((p) => p.tm < 0).length;
+  const kb = $('#btnKickIdle');
+  kb.textContent = 'Boştakileri at (' + idle + ')';
+  kb.disabled = idle === 0;
+  const list = $('#adminList');
   list.textContent = '';
-  for (const p of st.players) {
-    if (p.id === me.id) continue;
-    const row = mk('div', 'orow2');
-    row.append(mk('span', '', (p.tm >= 0 ? '#' + p.u + ' ' : '') + p.n + (p.tm < 0 ? ' (taraftar)' : '')));
-    const b = mk('button', '', 'AT'); b.type = 'button';
-    b.addEventListener('click', () => send({ t: 'kick', id: p.id }));
-    row.append(b);
+  if (!others.length) { list.append(mk('span', 'aempty', 'Sunucuda başka oyuncu yok')); return; }
+  for (const p of others) {
+    const row = mk('div', 'arow' + (p.tm < 0 ? ' idle' : ''));
+    const where = p.tm < 0 ? 'boşta' : st.teams[p.tm].n + ' • ' + (forms[st.teams[p.tm].f][p.sl] || [''])[0];
+    row.append(mk('span', 'an', '#' + p.u + ' ' + p.n), mk('small', '', where));
+    const x = mk('button', 'akick', '✕'); x.type = 'button'; x.title = 'At';
+    x.addEventListener('click', () => send({ t: 'kick', id: p.id }));
+    row.append(x);
     list.append(row);
   }
-  if (!list.children.length) list.append(mk('p', 'note', 'Sunucuda başka kimse yok.'));
 }
-$('#btnSetPass').addEventListener('click', () => { const v = $('#ownPass').value.trim(); if (!v) { toast('Bir parola yaz'); return; } send({ t: 'setpass', v }); });
-$('#btnDelPass').addEventListener('click', () => { $('#ownPass').value = ''; send({ t: 'setpass', v: '' }); });
+$('#btnKickIdle').addEventListener('click', () => send({ t: 'kickIdle' }));
 
 // ------------------------------------------------------------------ durum mesajı
 const el = {
@@ -333,7 +294,6 @@ function onState(m) {
   el.chipA.style.background = m.teams[0].c; el.chipB.style.background = m.teams[1].c;
   el.scoreA.textContent = m.sc[0]; el.scoreB.textContent = m.sc[1];
   el.specBar.classList.toggle('hidden', me.slot >= 0 || m.ph === 'lobby');
-  layoutFans(); updateFanBar(); updateTouchUi();
   updatePos();
 
   if (m.ph !== prevPhase) {
@@ -353,13 +313,11 @@ function updateView() {
   if (!joined || !st) return;
   const ph = st.ph;
   const showLobby = ph === 'lobby' || (lobbyOpen && ph !== 'end');
-  scr.menu.classList.add('hidden'); scr.servers.classList.add('hidden'); scr.create.classList.add('hidden');
-  $('#pwModal').classList.add('hidden');
+  scr.menu.classList.add('hidden'); scr.servers.classList.add('hidden');
   scr.lobby.classList.toggle('hidden', !showLobby);
   scr.game.classList.toggle('hidden', ph === 'lobby');
   $('#btnCloseLobby').classList.toggle('hidden', ph === 'lobby');
   if (showLobby) renderLobby();
-  updateFanBar();
   if (!scr.game.classList.contains('hidden')) resize();
 }
 
@@ -492,10 +450,6 @@ function onSnap(m) {
     el.cd.textContent = m.c > 1.6 ? String(Math.ceil(m.c)) : 'HAZIR';
   }
   const mine = curMap.get(me.id);
-  const hold = mine ? (mine[6] || 0) : 0;
-  const hh = $('#holdHud');
-  hh.classList.toggle('hidden', !hold);
-  if (hold) hh.textContent = 'TOP SENDE — ' + (hold / 10).toFixed(1) + ' sn içinde oyunu başlat!';
   if (mine) {
     if (mine[4] !== lastStam) { lastStam = mine[4]; el.stam.style.width = mine[4] + '%'; }
   }
@@ -512,13 +466,11 @@ function resize() {
   cw = window.innerWidth; ch = window.innerHeight;
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
-  const isFan = me.slot < 0;
-  const top = ch > 520 ? 100 : 64, bottom = isFan ? (ch > 520 ? 118 : 64) : 10, pad = 12;
-  standH = clamp(Math.round(ch * 0.05), 18, 34);
-  const availH = ch - top - bottom - standH * 2 - 8;
+  const top = 64, bottom = 10, pad = 12;
+  const availH = ch - top - bottom;
   sc = Math.min((cw - pad * 2) / (cfg.W + cfg.GD * 2), availH / (cfg.H + pad));
   ox = (cw - cfg.W * sc) / 2;
-  oy = top + standH + 4 + (availH - cfg.H * sc) / 2;
+  oy = top + (availH - cfg.H * sc) / 2;
   buildPitch();
 }
 window.addEventListener('resize', resize);
@@ -530,15 +482,6 @@ function buildPitch() {
   const { W, H, GW, GD, POST } = cfg;
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = '#0a3519'; g.fillRect(0, 0, pitchCv.width, pitchCv.height);
-  // tribünler (v1.2)
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (const i of [0, 1]) {
-    const r = standRect(i);
-    const gr = g.createLinearGradient(0, r.y, 0, r.y + r.h);
-    gr.addColorStop(0, i ? '#33475b' : '#1b2733'); gr.addColorStop(1, i ? '#1b2733' : '#33475b');
-    g.fillStyle = gr; g.fillRect(r.x0, r.y, r.w, r.h);
-    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1; g.strokeRect(r.x0 + .5, r.y + .5, r.w - 1, r.h - 1);
-  }
   g.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
 
   const n = 14, sw = W / n;
@@ -581,20 +524,10 @@ function buildPitch() {
   }
 }
 
-function drawPlayer(x, y, info, isMe, charge, hold) {
+function drawPlayer(x, y, info, isMe, charge) {
   const R = cfg.R;
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   ctx.beginPath(); ctx.ellipse(x + 3, y + R * 0.75, R, R * 0.55, 0, 0, 6.2832); ctx.fill();
-  // v1.1: şut çemberi — top bu çembere değerse vurulabilir
-  ctx.save(); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
-  ctx.strokeStyle = isMe ? 'rgba(255,255,255,.65)' : 'rgba(255,255,255,.3)';
-  ctx.beginPath(); ctx.arc(x, y, cfg.RING, 0, 6.2832); ctx.stroke(); ctx.restore();
-  if (hold > 0) {   // v1.2: kaleci topu tutuyor — 5 sn geri sayım
-    ctx.strokeStyle = '#ff8a3d'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y, cfg.RING + 5, -Math.PI / 2, -Math.PI / 2 + hold / 50 * 6.2832); ctx.stroke();
-    ctx.fillStyle = '#ff8a3d'; ctx.font = '800 12px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((hold / 10).toFixed(1), x, y + R + 17);
-  }
   if (charge > 0) {
     ctx.strokeStyle = charge > 70 ? '#ff5252' : '#ffd23f'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(x, y, R + 6, -Math.PI / 2, -Math.PI / 2 + charge / 100 * 6.2832); ctx.stroke();
@@ -629,112 +562,6 @@ function drawBall(x, y) {
   ctx.closePath(); ctx.fill();
 }
 
-// ------------------------------------------------------------------ taraftar / tribün (v1.2)
-function standRect(i) {
-  return { x0: ox - cfg.GD * sc, w: (cfg.W + cfg.GD * 2) * sc, y: i === 0 ? oy - 4 - standH : oy + cfg.H * sc + 4, h: standH };
-}
-function layoutFans() {
-  fanSeats.clear();
-  if (!st) return;
-  const fans = st.players.filter((p) => p.tm < 0).sort((a, b) => a.id - b.id);
-  const groups = [[[], [], []], [[], [], []]];
-  fans.forEach((p, i) => { groups[i % 2][p.ft === 0 ? 0 : p.ft === 1 ? 1 : 2].push(p); });
-  for (let stand = 0; stand < 2; stand++) for (let g = 0; g < 3; g++) {
-    const arr = groups[stand][g];
-    arr.forEach((p, k) => fanSeats.set(p.id, { id: p.id, stand, g, k, cnt: arr.length, ft: p.ft }));
-  }
-}
-function seatPos(f) {
-  const r = standRect(f.stand), sp = 16, rows = Math.max(1, Math.floor((r.h - 4) / 10));
-  const col = Math.floor(f.k / rows), row = f.k % rows, cols = Math.ceil(f.cnt / rows);
-  let x;
-  if (f.g === 0) x = r.x0 + 14 + col * sp;
-  else if (f.g === 1) x = r.x0 + r.w - 14 - col * sp;
-  else x = r.x0 + r.w / 2 + (col - (cols - 1) / 2) * sp;
-  return { x, y: r.y + (r.h - rows * 10) / 2 + 5 + row * 10 };
-}
-function rrect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
-function drawStands(now) {
-  if (!fanSeats.size) return;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (const f of fanSeats.values()) {
-    const p = seatPos(f);
-    const cele = celeb.until > now && celeb.team === f.ft;
-    const bob = cele ? Math.abs(Math.sin(now / 110 + f.id)) * 5 : Math.abs(Math.sin(now / 600 + f.id * 1.7)) * 1.2;
-    const col = f.ft >= 0 && st.teams[f.ft] ? st.teams[f.ft].c : '#cfd8dc', y = p.y - bob;
-    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, y + 2, 4, 0, 6.2832); ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.stroke();
-    ctx.fillStyle = '#f1c9a5'; ctx.beginPath(); ctx.arc(p.x, y - 3, 2.6, 0, 6.2832); ctx.fill();
-    if (f.id === me.id) { ctx.fillStyle = '#ffd23f'; ctx.fillRect(p.x - 3, y - 9, 6, 2); }
-    if (cele) { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x - 4, y); ctx.lineTo(p.x - 7, y - 8); ctx.moveTo(p.x + 4, y); ctx.lineTo(p.x + 7, y - 8); ctx.stroke(); }
-  }
-  ctx.font = '600 11px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (const [id, b] of bubbles) {
-    if (b.until < now) { bubbles.delete(id); continue; }
-    const f = fanSeats.get(id);
-    if (!f) continue;
-    const r = standRect(f.stand), p = seatPos(f), maxW = Math.min(r.w - 8, 360);
-    let txt = b.txt;
-    while (txt.length > 4 && ctx.measureText(txt).width + 14 > maxW) txt = txt.slice(0, -2) + '…';
-    const w = ctx.measureText(txt).width + 14, h = Math.min(18, standH - 2);
-    const x = clamp(p.x, r.x0 + w / 2 + 2, r.x0 + r.w - w / 2 - 2), y = r.y + r.h / 2;
-    ctx.fillStyle = 'rgba(255,255,255,.96)'; rrect(x - w / 2, y - h / 2, w, h, 8); ctx.fill();
-    ctx.fillStyle = '#111'; ctx.fillText(txt, x, y + 1);
-  }
-}
-function resetFans() {
-  fanSeats.clear(); bubbles.clear();
-  const f = $('#feed'); if (f) f.textContent = '';
-  const fb = $('#fanBar'); if (fb) fb.classList.add('hidden');
-  const hh = $('#holdHud'); if (hh) hh.classList.add('hidden');
-}
-function onSay(m) {
-  bubbles.set(m.id, { txt: m.n + ': ' + m.txt, until: performance.now() + 5000 });
-  const feed = $('#feed'), d = mk('div'), chip = mk('i', 'chip');
-  chip.style.cssText = 'width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:' + (m.ft >= 0 && st && st.teams[m.ft] ? st.teams[m.ft].c : '#cfd8dc');
-  d.append(chip, mk('b', '', m.n + ':'), document.createTextNode(m.txt));
-  feed.append(d);
-  while (feed.children.length > 6) feed.firstChild.remove();
-  setTimeout(() => d.remove(), 14000);
-}
-const fanBar = $('#fanBar'), fanTxt = $('#fanTxt');
-for (const t of ['Hadi!', 'Goool!', 'Hakem!', 'Güzel pas!', 'Yuh!']) {
-  const b = mk('button', '', t); b.type = 'button';
-  b.addEventListener('click', () => send({ t: 'say', txt: t }));
-  $('#fchants').append(b);
-}
-fanBar.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const t = fanTxt.value.trim();
-  if (!t) return;
-  send({ t: 'say', txt: t }); fanTxt.value = '';
-});
-$('#fs0').addEventListener('click', () => send({ t: 'support', v: 0 }));
-$('#fs1').addEventListener('click', () => send({ t: 'support', v: 1 }));
-$('#fsN').addEventListener('click', () => send({ t: 'support', v: -1 }));
-function updateFanBar() {
-  const on = !!(joined && st && me.slot < 0 && st.ph !== 'end');
-  fanBar.classList.toggle('hidden', !on);
-  if (!on) return;
-  const mine = st.players.find((p) => p.id === me.id), ft = mine ? mine.ft : -1;
-  for (const t of [0, 1]) {
-    const b = $('#fs' + t);
-    b.querySelector('em').textContent = st.teams[t].n;
-    b.querySelector('.chip').style.background = st.teams[t].c;
-    b.classList.toggle('on', ft === t);
-  }
-  $('#fsN').classList.toggle('on', ft !== 0 && ft !== 1);
-}
-function updateTouchUi() {
-  $('#touch').classList.toggle('hidden', !(('ontouchstart' in window) || navigator.maxTouchPoints > 0) || me.slot < 0);
-  $('#tHold').classList.toggle('hidden', me.slot !== 0);
-  $('#stamWrap').classList.toggle('hidden', me.slot < 0);
-}
-
 function frame(now) {
   requestAnimationFrame(frame);
   if (!joined || !st || !cfg || scr.game.classList.contains('hidden') || !snapCur) return;
@@ -742,7 +569,6 @@ function frame(now) {
   pushInput();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(pitchCv, 0, 0);
-  drawStands(now);
   ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
   const a = clamp((now - snapT) / snapInt, 0, 1);
 
@@ -752,7 +578,7 @@ function frame(now) {
     const pv = prevMap.get(arr[0]);
     const x = pv ? pv[1] + (arr[1] - pv[1]) * a : arr[1];
     const y = pv ? pv[2] + (arr[2] - pv[2]) * a : arr[2];
-    drawPlayer(x, y, info, arr[0] === me.id, arr[3], arr[6] || 0);
+    drawPlayer(x, y, info, arr[0] === me.id, arr[3]);
   }
   const b = snapCur.b, pb = snapPrev.b || b;
   drawBall(pb[0] + (b[0] - pb[0]) * a, pb[1] + (b[1] - pb[1]) * a);
@@ -763,7 +589,6 @@ requestAnimationFrame(frame);
 const keys = new Set();
 const joy = { x: 0, y: 0, id: -1 };
 let kickKey = false, sprintKey = false, touchKick = false, touchSprint = false, lastKey = '';
-let grabKey = false, mouseKick = false, mouseGrab = false, touchHold = false;
 const KMAP = { ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd', ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r' };
 
 function inGameView() { return joined && st && st.ph !== 'lobby' && scr.lobby.classList.contains('hidden') && !scr.game.classList.contains('hidden'); }
@@ -772,11 +597,11 @@ function pushInput() {
   let dx = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0);
   let dy = (keys.has('d') ? 1 : 0) - (keys.has('u') ? 1 : 0);
   if (joy.id !== -1) { dx = joy.x; dy = joy.y; }
-  const s = (sprintKey || touchSprint) ? 1 : 0, k = (kickKey || touchKick || mouseKick) ? 1 : 0, g = (grabKey || mouseGrab || touchHold) ? 1 : 0;
-  const key = dx + ',' + dy + ',' + s + ',' + k + ',' + g;
+  const s = (sprintKey || touchSprint) ? 1 : 0, k = (kickKey || touchKick) ? 1 : 0;
+  const key = dx + ',' + dy + ',' + s + ',' + k;
   if (key === lastKey) return;
   lastKey = key;
-  send({ t: 'in', dx, dy, s, k, g });
+  send({ t: 'in', dx, dy, s, k });
 }
 
 window.addEventListener('keydown', (e) => {
@@ -788,7 +613,6 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Tab') setPanel(true);
   else if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'KeyK') kickKey = true;
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') sprintKey = true;
-  else if (e.code === 'KeyE' || e.code === 'KeyF') grabKey = true;
   else return;
   e.preventDefault();
   pushInput();
@@ -799,29 +623,10 @@ window.addEventListener('keyup', (e) => {
   else if (e.code === 'Tab') { setPanel(false); e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'KeyK') kickKey = false;
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') sprintKey = false;
-  else if (e.code === 'KeyE' || e.code === 'KeyF') grabKey = false;
   else return;
   pushInput();
 });
-window.addEventListener('blur', () => { keys.clear(); kickKey = sprintKey = grabKey = mouseKick = mouseGrab = false; pushInput(); });
-
-// fare (v1.2): sol tık = şut, sağ tık = kaleci topu tutar
-scr.game.addEventListener('pointerdown', (e) => {
-  if (e.pointerType !== 'mouse' || !inGameView()) return;
-  if (e.target.closest && e.target.closest('button,input,select,#statsPanel,#end')) return;
-  if (e.button === 0) mouseKick = true;
-  else if (e.button === 2) mouseGrab = true;
-  else return;
-  e.preventDefault();
-  pushInput();
-});
-window.addEventListener('pointerup', (e) => {
-  if (e.pointerType !== 'mouse') return;
-  if (e.button === 0) mouseKick = false;
-  else if (e.button === 2) mouseGrab = false;
-  else return;
-  pushInput();
-});
+window.addEventListener('blur', () => { keys.clear(); kickKey = sprintKey = false; pushInput(); });
 
 // dokunmatik
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -864,10 +669,8 @@ if (isTouch) {
   };
   bind('#tKick', () => { touchKick = true; }, () => { touchKick = false; });
   bind('#tSprint', () => { touchSprint = true; }, () => { touchSprint = false; });
-  bind('#tHold', () => { touchHold = true; }, () => { touchHold = false; });
 }
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-cMaxUpdate();
 show('menu');
 })();

@@ -1,20 +1,6 @@
-# SoccerOnline v1.2 (8v8)
+# Mini Futbol 11v11 (v1.3)
 
 Haxball x PES tarzı online futbol. Node.js + ws (sunucu), saf HTML/CSS/JS (istemci).
-
-## v1.2 Yenilikleri
-- Taraftar: oynamayanlar tribüne oturur, takım tutar, tribünden mesaj yazar / tezahürat yapar
-- Kaleci topu eline alır (kale sahası içinde, E veya sağ tık); 5 sn içinde oyunu başlatmalı, süre dolunca top otomatik atılır
-- Sol tık ile şut
-- Sabit sunucular kaldırıldı: sunucu listesi + sunucu kurma (isim, kapasite 16–64, isteğe bağlı parola)
-- Sunucu sahibi parola koyabilir/kaldırabilir ve oyuncuları atabilir (atılan 1 dk giremez); sahip çıkarsa sıradaki oyuncu sahip olur, boş sunucu kapanır
-
-## v1.1 Yenilikleri
-- Durduktan sonraki kayma %50 azaldı
-- Karakter hızı %10 arttı
-- Stamina %25 arttı
-- Şut dolum süresi %10 azaldı
-- Karakter etrafında şut çemberi: top çembere 1 piksel bile girse vurulabilir
 
 ## Render'a kurulum
 1. Bu klasörü bir GitHub deposuna yükle.
@@ -28,7 +14,15 @@ Not: Render ücretsiz planda 15 dk işlem olmazsa uyur; ilk giriş birkaç saniy
     npm install && npm start   ->  http://localhost:3000
 
 ## Kontroller
-WASD/Oklar hareket | Boşluk/X/Sol tık şut (basılı tut = güç) | E/Sağ tık kaleci topu tutar | Shift koşu | Tab (basılı tut) istatistik | Telefonda: joystick + ŞUT/KOŞ + İstatistik düğmesi
+WASD/Oklar hareket | Boşluk/X şut (basılı tut = güç) | Shift koşu | Tab (basılı tut) istatistik | Telefonda: joystick + ŞUT/KOŞ + İstatistik düğmesi
+
+## v1.3 yenilikleri
+- Tek ve sabit **11v11** sunucu (takım başına 11 mevki, 22 oyuncu + 8 izleyici = 30 kişi).
+- **İlk giren admin** olur; admin çıkarsa sunucudaki en eski oyuncu admin olur.
+- Admin, lobideki *Admin paneli*nden **boşta olanları** (mevki almamış izleyicileri) tek tuşla atabilir ya da herhangi bir oyuncuyu ✕ ile atabilir. (Maç sırasında "Mevkiler" düğmesiyle panele ulaşılır.)
+- 11v11'e özel mevkiler ve dizilişler: 4-4-2 (varsayılan), 4-3-3, 4-2-3-1, 3-5-2, 3-4-3, 5-3-2.
+  Mevki kısaltmaları: KL kaleci, SLB/SĞB sol/sağ bek, SLS/SĞS sol/sağ stoper, STP stoper, SLKB/SĞKB kanat bek, SLD/SĞD defansif orta, SLO/OS/SĞO orta saha, OOS ofansif orta saha, SLK/SĞK kanat, SLF/SĞF/FV forvet.
+- Diğer her şey (fizik, şut, kaptanlık, istatistik) aynı.
 
 ## Ayarlar (server.js başı)
-MATCH_SECONDS, GOAL_SECONDS, MIN_MAX/MAX_MAX/MAX_ROOMS, HOLD_SECONDS, CFG.BOX_W/BOX_H, FORMATIONS, P/B (fizik)
+MATCH_SECONDS, GOAL_SECONDS, ROOM_COUNT, MAX_PLAYERS, SLOTS, FORMATIONS, CFG (saha boyu), P/B (fizik)

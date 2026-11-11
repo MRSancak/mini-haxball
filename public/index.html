@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07210f">
-<title>SoccerOnline</title>
+<title>Mini Futbol 11v11</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23fff' stroke='%23111' stroke-width='6'/%3E%3Cpath d='M50 30l18 13-7 21H39l-7-21z' fill='%23111'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,77 +14,25 @@
 <main id="menu" class="screen center">
   <div class="brand">
     <div class="logo"></div>
-    <h1>SOCCER<span>ONLINE</span></h1>
-    <p>8v8 online &bull; v1.3</p>
+    <h1>MİNİ<span>FUTBOL</span></h1>
+    <p>11v11 online &bull; Haxball &times; PES &bull; v1.3</p>
   </div>
   <form id="menuForm" class="card" autocomplete="off">
     <label><span>Forma numarası</span><input id="inNum" type="number" inputmode="numeric" min="1" max="99" value="10"></label>
     <label><span>Oyuncu adı</span><input id="inName" type="text" maxlength="14" placeholder="İsmin"></label>
     <button class="btn primary" type="submit">OYNA</button>
   </form>
-  <section class="news" aria-label="v1.3 yenilikleri">
-
-<!-- 2) Yenilik menüsü -->
-    <h3>1.3 Yenilikleri</h3>
-      <ul>
-          <li>E Q ile falso verme</li>
-          <li>Sprint sonrası durmadaki kayma %25 azaltıldı</li>
-          <li>Mevcut yürüme hızı %5 azaltıldı</li>
-          <li>stamina doluma hızı %5 azaltıldı</li>
-          <li>%5 daha hızlı şut dolumu</li>
-      </ul>
-    <details>
-      <summary>v1.2 Yenilikleri</summary>
-        <ul>
-          <li><b>Taraftar:</b> Oynamayanlar tribüne oturur, takım tutar ve tribünden bir şeyler söyler</li>
-          <li><b>Kaleci eliyle tutar:</b> Kale sahası içinde topu al, 5 saniye içinde oyunu başlat</li>
-          <li><b>Sol tık ile şut:</b> Fareyle de topa vurabilirsin (sağ tık = kaleci topu tutar)</li>
-          <li><b>Sunucu kur:</b> Sabit sunucular kalktı; sunucu listesinden katıl ya da kendi sunucunu kur</li>
-          <li><b>Parola ve yönetim:</b> Parola koy/kaldır, istediğini sunucudan at, kapasite 16–64</li>
-        </ul>
-    </details> 
-    <details>
-      <summary>v1.1 yenilikleri</summary>
-      <ul>
-        <li>Durma sonrası kayma %50 azaldı &bull; hız %10, stamina %25 arttı</li>
-        <li>Şut dolumu %10 hızlandı &bull; karakter etrafında şut çemberi</li>
-      </ul>
-    </details>
-  </section>
-  <p class="hint">Hareket: <b>WASD / Oklar</b> &bull; Şut: <b>Boşluk / X / Sol tık</b> (basılı tut = güç) &bull; Kaleci tut: <b>E / Sağ tık</b> &bull; Koşu: <b>Shift</b> &bull; İstatistik: <b>Tab</b> (basılı tut)</p>
+  <p class="hint">Hareket: <b>WASD / Oklar</b> &bull; Şut: <b>Boşluk / X</b> (basılı tut = güç) &bull; Koşu: <b>Shift</b> &bull; İstatistik: <b>Tab</b> (basılı tut)</p>
 </main>
 
-<!-- 3) SUNUCU SEÇİMİ -->
+<!-- 2) SUNUCU SEÇİMİ -->
 <main id="servers" class="screen center hidden">
-  <h2>Sunucu listesi</h2>
-  <button id="btnCreate" class="btn primary" type="button">+ Sunucu kur</button>
+  <h2>Sunucu seç</h2>
   <div id="serverList" class="slist"></div>
   <button id="btnBack" class="btn ghost" type="button">&larr; Geri</button>
 </main>
 
-<!-- 3b) SUNUCU KUR -->
-<main id="create" class="screen center hidden">
-  <h2>Sunucu kur</h2>
-  <form id="createForm" class="card" autocomplete="off">
-    <label><span>Sunucu ismi</span><input id="cName" type="text" maxlength="24" placeholder="Sunucu ismi" required></label>
-    <label><span>Kapasite: <b id="cMaxTxt">16</b> kişi</span><input id="cMax" type="range" min="16" max="64" step="1" value="16"></label>
-    <p class="note" id="cNote">8v8 maç (16 oyuncu) + 0 taraftar</p>
-    <label><span>Parola (isteğe bağlı)</span><input id="cPass" type="text" maxlength="20" placeholder="Boş bırak = parolasız"></label>
-    <button class="btn primary" type="submit">KUR VE GİR</button>
-  </form>
-  <button id="btnCreateBack" class="btn ghost" type="button">&larr; Geri</button>
-</main>
-
-<!-- parola penceresi -->
-<div id="pwModal" class="modal hidden">
-  <form id="pwForm" class="card" autocomplete="off">
-    <h3 id="pwTitle">Parola gerekli</h3>
-    <input id="pwInput" type="text" maxlength="20" placeholder="Parola">
-    <div class="row2"><button class="btn ghost" id="pwCancel" type="button">İptal</button><button class="btn primary" type="submit">GİR</button></div>
-  </form>
-</div>
-
-<!-- 4) MEVKİ SEÇME / LOBİ -->
+<!-- 3) MEVKİ SEÇME / LOBİ -->
 <main id="lobby" class="screen hidden">
   <header class="lobbyHead">
     <div>
@@ -107,18 +55,16 @@
     <section class="ctrl" id="ctrl1"></section>
   </div>
   <p id="specs" class="specs"></p>
-  <section id="owner" class="owner hidden">
-    <h3>Sunucu yönetimi</h3>
-    <div class="orow">
-      <input id="ownPass" type="text" maxlength="20" placeholder="Yeni parola">
-      <button id="btnSetPass" class="btn ghost small" type="button">Parola koy</button>
-      <button id="btnDelPass" class="btn ghost small" type="button">Parolayı kaldır</button>
+  <section id="adminBox" class="adminBox hidden">
+    <div class="ahead">
+      <h3>Admin paneli</h3>
+      <button id="btnKickIdle" class="btn danger small" type="button">Boştakileri at</button>
     </div>
-    <div id="ownList" class="olist"></div>
+    <div id="adminList" class="alist"></div>
   </section>
 </main>
 
-<!-- 5) OYUN -->
+<!-- 4) OYUN -->
 <div id="game" class="hidden">
   <canvas id="cv"></canvas>
 
@@ -144,8 +90,7 @@
   </div>
 
   <div id="stamWrap" class="stamWrap"><span>KOŞU</span><div class="stam"><i id="stam"></i></div></div>
-  <div id="holdHud" class="holdHud hidden"></div>
-  <div id="specBar" class="specBar hidden">Taraftarsın &mdash; oynamak için <b>Mevkiler</b>'den boş bir yer seç</div>
+  <div id="specBar" class="specBar hidden">İzleyicisin &mdash; <b>Mevkiler</b>'den boş bir yer seç</div>
 
   <div id="banner" class="banner hidden">
     <div class="gol">GOL!</div>
@@ -169,21 +114,10 @@
     <div id="joy"><i id="knob"></i></div>
     <button id="tKick" type="button">ŞUT</button>
     <button id="tSprint" type="button">KOŞ</button>
-    <button id="tHold" type="button" class="hidden">TUT</button>
   </div>
   <div id="rotate" class="rotate">Telefonu yatay çevir</div>
 </div>
 
-<div id="feed" class="feed"></div>
-<form id="fanBar" class="fanBar hidden" autocomplete="off">
-  <div class="fsup"><span>Tuttuğun takım:</span>
-    <button type="button" id="fs0" class="fs"><i class="chip"></i><em></em></button>
-    <button type="button" id="fs1" class="fs"><i class="chip"></i><em></em></button>
-    <button type="button" id="fsN" class="fs">Tarafsız</button>
-  </div>
-  <div class="fchants" id="fchants"></div>
-  <div class="fsay"><input id="fanTxt" type="text" maxlength="60" placeholder="Tribünden bir şey söyle…"><button class="btn primary small" type="submit">SÖYLE</button></div>
-</form>
 <div id="toast" class="toast"></div>
 <script src="game.js"></script>
 </body>
