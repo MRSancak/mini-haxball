@@ -1,7 +1,7 @@
 'use strict';
 /**
- * Mini Futbol 11v11 — oyun sunucusu (v1.3)
- * Tek bağımlılık: ws. Statik dosyalar (gzip'li) + WebSocket oyun odaları.
+ * OnlineSoccer — oyun sunucusu (v1.3)
+ * Sunucular: 11v11 ve 8v8. Tek bağımlılık: ws. Statik dosyalar (gzip'li) + WebSocket oyun odaları.
  */
 const http = require('http');
 const fs = require('fs');
@@ -14,11 +14,13 @@ const PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUB = path.join(__dirname, 'public');
 
 // ---------------------------------------------------------------- ayarlar
-const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6 };
+// RING: oyuncunun çemberinin gövdeden dışarı taşan payı (kaleci çemberi bunun %50'si kadar)
+const CFG11 = { W: 1300, H: 640, GW: 190, GD: 46, R: 13, BR: 10, POST: 6, RING: 22 };  // 11v11: karakterler küçük
+const CFG8 = { W: 1100, H: 580, GW: 180, GD: 46, R: 16, BR: 10, POST: 6, RING: 22 };   // 8v8
+const GK_SLOT = 0;         // her dizilişte 0. mevki kaleci (KL)
+const GK_RING = 0.5;       // kaleci çemberi %50 daha küçük
+const SPIN = 0.010;        // falso şiddeti (rad/frame, tam güçte)
 const VERSION = '1.3.0';
-const ROOM_COUNT = 1;      // tek, sabit 11v11 sunucu
-const MAX_PLAYERS = 30;    // 22 oyuncu + 8 izleyici
-const SLOTS = 11;          // takım başına mevki
 const MATCH_SECONDS = 300;
 const START_COUNTDOWN = 5;
 const GOAL_SECONDS = 5;
@@ -43,11 +45,29 @@ const FORMATIONS = {
   '5-3-2': [['KL', .05, .5], ['SLKB', .25, .07], ['SLS', .19, .28], ['STP', .15, .5], ['SĞS', .19, .72], ['SĞKB', .25, .93],
     ['SLO', .5, .25], ['OS', .44, .5], ['SĞO', .5, .75], ['SLF', .86, .36], ['SĞF', .86, .64]],
 };
-const DEFAULT_FORM = '4-4-2';
-for (const k of Object.keys(FORMATIONS)) if (FORMATIONS[k].length !== SLOTS) throw new Error('Diziliş ' + k + ' ' + SLOTS + ' mevkili olmalı');
+const FORMATIONS8 = {
+  '2-3-2': [['KL', .05, .5], ['SLS', .2, .33], ['SĞS', .2, .67],
+    ['SLO', .46, .2], ['OS', .42, .5], ['SĞO', .46, .8], ['SLF', .86, .36], ['SĞF', .86, .64]],
+  '3-3-1': [['KL', .05, .5], ['SLB', .2, .2], ['STP', .16, .5], ['SĞB', .2, .8],
+    ['SLO', .46, .25], ['OS', .42, .5], ['SĞO', .46, .75], ['FV', .88, .5]],
+  '3-2-2': [['KL', .05, .5], ['SLB', .2, .2], ['STP', .16, .5], ['SĞB', .2, .8],
+    ['SLO', .46, .35], ['SĞO', .46, .65], ['SLF', .86, .33], ['SĞF', .86, .67]],
+  '2-4-1': [['KL', .05, .5], ['SLS', .2, .33], ['SĞS', .2, .67],
+    ['SLK', .5, .1], ['SLO', .45, .37], ['SĞO', .45, .63], ['SĞK', .5, .9], ['FV', .88, .5]],
+};
+
+// Sunucu tanımları: sadece bu iki mod oynanır
+const MODES = [
+  { name: '11v11 Sunucu', slots: 11, forms: FORMATIONS, def: '4-4-2', cfg: CFG11, max: 30 },  // 22 oyuncu + 8 izleyici
+  { name: '8v8 Sunucu', slots: 8, forms: FORMATIONS8, def: '2-3-2', cfg: CFG8, max: 24 },     // 16 oyuncu + 8 izleyici
+];
+for (const m of MODES) for (const k of Object.keys(m.forms)) {
+  if (m.forms[k].length !== m.slots) throw new Error(m.name + ': diziliş ' + k + ' ' + m.slots + ' mevkili olmalı');
+  if (m.forms[k][GK_SLOT][0] !== 'KL') throw new Error(m.name + ': ' + k + ' 0. mevki kaleci olmalı');
+}
 
 const P = { accel: 0.12, sprint: 0.165, damp: 0.96, im: 0.5, rest: 0.3, stamDrain: 0.0035, stamRegen: 0.0018 };
-const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14 };
+const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14, spinDamp: 0.992 };
 
 // ---------------------------------------------------------------- yardımcılar
 const r1 = (v) => Math.round(v * 10) / 10;
@@ -59,15 +79,16 @@ const clampInt = (v, a, b, d) => {
 };
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-function slotPos(formation, slot, team) {
-  const f = (FORMATIONS[formation] || FORMATIONS[DEFAULT_FORM])[slot];
-  const px = 30 + f[1] * (CFG.W / 2 - 80);
-  const py = f[2] * CFG.H;
-  return team === 0 ? { x: px, y: py } : { x: CFG.W - px, y: CFG.H - py };
+function slotPos(mode, formation, slot, team) {
+  const cfg = mode.cfg;
+  const f = (mode.forms[formation] || mode.forms[mode.def])[slot];
+  const px = 30 + f[1] * (cfg.W / 2 - 80);
+  const py = f[2] * cfg.H;
+  return team === 0 ? { x: px, y: py } : { x: cfg.W - px, y: cfg.H - py };
 }
 
-function mkTeam(name, color) {
-  return { name, color, formation: DEFAULT_FORM, captain: null, ready: false, slots: new Array(SLOTS).fill(null) };
+function mkTeam(mode, name, color) {
+  return { name, color, formation: mode.def, captain: null, ready: false, slots: new Array(mode.slots).fill(null) };
 }
 
 // ---------------------------------------------------------------- fizik
@@ -91,14 +112,14 @@ function collide(a, b, rest) {
   return true;
 }
 
-function clampPlayer(e) {
-  const { W, H, R } = CFG;
+function clampPlayer(e, cfg) {
+  const { W, H } = cfg, R = e.r;
   if (e.x < R) { e.x = R; if (e.vx < 0) e.vx = 0; } else if (e.x > W - R) { e.x = W - R; if (e.vx > 0) e.vx = 0; }
   if (e.y < R) { e.y = R; if (e.vy < 0) e.vy = 0; } else if (e.y > H - R) { e.y = H - R; if (e.vy > 0) e.vy = 0; }
 }
 
-function constrainLeft(b) {
-  const { GW, GD, BR, H } = CFG;
+function constrainLeft(b, cfg) {
+  const { GW, GD, BR, H } = cfg;
   const cy = H / 2, hg = GW / 2;
   if (b.x < BR) {
     if (Math.abs(b.y - cy) < hg) {
@@ -114,38 +135,42 @@ function constrainLeft(b) {
   }
 }
 
-function clampBall(b) {
-  const { W, H, BR } = CFG;
+function clampBall(b, cfg) {
+  const { W, H, BR } = cfg;
   if (b.x >= 0 && b.x <= W) {
     if (b.y < BR) { b.y = BR; if (b.vy < 0) b.vy = -b.vy * B.wallRest; }
     else if (b.y > H - BR) { b.y = H - BR; if (b.vy > 0) b.vy = -b.vy * B.wallRest; }
   }
-  constrainLeft(b);
+  constrainLeft(b, cfg);
   b.x = W - b.x; b.vx = -b.vx;
-  constrainLeft(b);
+  constrainLeft(b, cfg);
   b.x = W - b.x; b.vx = -b.vx;
 }
 
 // ---------------------------------------------------------------- oda
 class Room {
-  constructor(id) {
+  constructor(id, mode) {
     this.id = id;
-    this.name = '11v11 Sunucu';
+    this.mode = mode;
+    this.cfg = mode.cfg;
+    this.name = mode.name;
+    this.slots = mode.slots;
+    this.maxPlayers = mode.max;
     this.adminId = null;
     this.clients = new Map();
     this.frame = 0;
     this.posts = [];
-    const cy = CFG.H / 2, hg = CFG.GW / 2;
-    for (const x of [0, CFG.W]) for (const y of [cy - hg, cy + hg]) {
-      this.posts.push({ x, y, vx: 0, vy: 0, r: CFG.POST, im: 0 });
+    const C = this.cfg, cy = C.H / 2, hg = C.GW / 2;
+    for (const x of [0, C.W]) for (const y of [cy - hg, cy + hg]) {
+      this.posts.push({ x, y, vx: 0, vy: 0, r: C.POST, im: 0 });
     }
-    this.ball = { x: CFG.W / 2, y: CFG.H / 2, vx: 0, vy: 0, r: CFG.BR, im: B.im };
+    this.ball = { x: C.W / 2, y: C.H / 2, vx: 0, vy: 0, r: C.BR, im: B.im, spin: 0 };
     this.resetAll();
   }
 
   resetAll() {
     this.adminId = null;
-    this.teams = [mkTeam('Takım A', '#e53935'), mkTeam('Takım B', '#1e88e5')];
+    this.teams = [mkTeam(this.mode, 'Takım A', '#e53935'), mkTeam(this.mode, 'Takım B', '#1e88e5')];
     for (const c of this.clients.values()) { c.team = -1; c.slot = -1; }
     this.toLobby(true);
   }
@@ -160,7 +185,7 @@ class Room {
     this.simTime = 0;
     this.timer = 0;
     for (const t of this.teams) t.ready = false;
-    this.ball.x = CFG.W / 2; this.ball.y = CFG.H / 2; this.ball.vx = 0; this.ball.vy = 0;
+    this.ball.x = this.cfg.W / 2; this.ball.y = this.cfg.H / 2; this.ball.vx = 0; this.ball.vy = 0; this.ball.spin = 0;
     if (!silent) this.pushState();
   }
 
@@ -181,19 +206,19 @@ class Room {
   }
   pushState() { this.broadcast(this.stateMsg()); }
   info() {
-    return { id: this.id, name: this.name, count: this.clients.size, max: MAX_PLAYERS, ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
+    return { id: this.id, name: this.name, count: this.clients.size, max: this.maxPlayers, mode: this.slots + 'v' + this.slots, ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
   }
 
   // ---- oyuncular
   addClient(ws, name, number) {
     const c = {
       id: ++Room.nextId, ws, name, num: number, team: -1, slot: -1, takenAt: 0,
-      inp: { dx: 0, dy: 0, s: false, k: false },
-      e: { x: 0, y: 0, vx: 0, vy: 0, r: CFG.R, im: P.im, charge: 0, holding: false, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0 },
+      inp: { dx: 0, dy: 0, s: false, k: false, q: false, e: false },
+      e: { x: 0, y: 0, vx: 0, vy: 0, r: this.cfg.R, im: P.im, charge: 0, holding: false, curve: 0, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0 },
     };
     this.clients.set(c.id, c);
     if (this.adminId == null) this.adminId = c.id; // ilk giren admin
-    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: CFG, forms: FORMATIONS, max: MAX_PLAYERS }));
+    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: this.cfg, forms: this.mode.forms, max: this.maxPlayers, gk: GK_SLOT, gkRing: GK_RING }));
     this.pushState();
     this.send(c, this.statsMsg());
     return c;
@@ -252,7 +277,7 @@ class Room {
   take(c, team, slot) {
     if (this.phase === 'end') return;
     if (team !== 0 && team !== 1) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= SLOTS) return;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.slots) return;
     const t = this.teams[team];
     if (t.slots[slot] != null) return;
     if (c.team === team && c.slot === slot) return;
@@ -260,7 +285,7 @@ class Room {
     t.slots[slot] = c.id;
     c.team = team; c.slot = slot; c.takenAt = Date.now() + Math.random();
     if (t.captain == null) { t.captain = c.id; t.ready = false; }
-    c.inp = { dx: 0, dy: 0, s: false, k: false };
+    c.inp = { dx: 0, dy: 0, s: false, k: false, q: false, e: false };
     this.placeEnt(c);
     this.pushState();
   }
@@ -283,7 +308,7 @@ class Room {
     if (typeof m.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(m.color) && m.color.toLowerCase() !== t.color) {
       t.color = m.color.toLowerCase(); changed = true;
     }
-    if (typeof m.formation === 'string' && FORMATIONS[m.formation] && this.phase === 'lobby' && t.formation !== m.formation) {
+    if (typeof m.formation === 'string' && this.mode.forms[m.formation] && this.phase === 'lobby' && t.formation !== m.formation) {
       t.formation = m.formation; changed = true;
       for (const id of t.slots) { const cl = id != null ? this.clients.get(id) : null; if (cl) this.placeEnt(cl); }
     }
@@ -305,7 +330,7 @@ class Room {
         const i = c.inp;
         i.dx = Math.max(-1, Math.min(1, num(m.dx)));
         i.dy = Math.max(-1, Math.min(1, num(m.dy)));
-        i.s = !!m.s; i.k = !!m.k;
+        i.s = !!m.s; i.k = !!m.k; i.q = !!m.q; i.e = !!m.e;
         break;
       }
       case 'take': this.take(c, m.team, m.slot); break;
@@ -321,16 +346,16 @@ class Room {
   // ---- maç akışı
   placeEnt(c) {
     if (c.team < 0) return;
-    const p = slotPos(this.teams[c.team].formation, c.slot, c.team);
+    const p = slotPos(this.mode, this.teams[c.team].formation, c.slot, c.team);
     const e = c.e;
     e.x = p.x; e.y = p.y; e.vx = 0; e.vy = 0;
-    e.charge = 0; e.holding = false; e.pending = null; e.kickCd = 0; e.stam = 1; e.tired = false; e.sp = 0;
+    e.charge = 0; e.holding = false; e.curve = 0; e.pending = null; e.kickCd = 0; e.stam = 1; e.tired = false; e.sp = 0;
   }
 
   resetPositions() {
     for (const c of this.clients.values()) this.placeEnt(c);
     const b = this.ball;
-    b.x = CFG.W / 2; b.y = CFG.H / 2; b.vx = 0; b.vy = 0;
+    b.x = this.cfg.W / 2; b.y = this.cfg.H / 2; b.vx = 0; b.vy = 0; b.spin = 0;
     this.touches = [];
     this.stats.kick = null;
   }
@@ -389,7 +414,7 @@ class Room {
 
   // Vuruşun yönüne bakarak şut mu pas mı olduğuna karar verir
   registerKick(c) {
-    const b = this.ball, { W, H, GW } = CFG, cy = H / 2;
+    const b = this.ball, { W, H, GW } = this.cfg, cy = H / 2;
     const gx = c.team === 0 ? W : 0, dir = c.team === 0 ? 1 : -1;
     const vx = b.vx * dir, dx = Math.abs(gx - b.x);
     let shot = false, on = false;
@@ -418,15 +443,22 @@ class Room {
     if (t.length > 6) t.shift();
   }
 
+  // Oyuncunun çember yarıçapı (gövde + pay); kalecinin payı %50 daha küçük
+  ringOf(c) {
+    return c.e.r + this.cfg.RING * (c.slot === GK_SLOT ? GK_RING : 1);
+  }
+
   tryKick(c) {
     const e = c.e, b = this.ball;
     if (e.kickCd > 0) return false;
     const dx = b.x - e.x, dy = b.y - e.y, d = Math.hypot(dx, dy);
-    if (d > e.r + b.r + 6) return false;
+    // çember kuralı: top çemberin içindeyse (ya da çembere değiyorsa) vurulabilir, dışındaysa vurulamaz
+    if (d - b.r > this.ringOf(c)) return false;
     const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
     const str = 3 + 8 * e.pending.p;
     b.vx = b.vx * 0.3 + nx * str;
     b.vy = b.vy * 0.3 + ny * str;
+    b.spin = (e.pending.curve || 0) * SPIN * (str / 11); // falso: Q = sola, E = sağa kavis
     e.kickCd = 10;
     this.touch(c);
     this.registerKick(c);
@@ -458,26 +490,37 @@ class Room {
         if (e.tired && e.stam > 0.25) e.tired = false;
       }
       if (inp.k && !frozen) acc *= 0.7;
+      if (!frozen) { // falso yönü: şut tuşu basılıyken son seçilen Q/E korunur
+        const cv = (inp.e ? 1 : 0) - (inp.q ? 1 : 0);
+        if (!e.holding || cv !== 0) e.curve = cv;
+      }
       e.vx = (e.vx + ax * acc) * P.damp;
       e.vy = (e.vy + ay * acc) * P.damp;
 
       if (!frozen) {
         if (inp.k) { e.charge = Math.min(1, e.charge + DT / 0.75); e.holding = true; }
-        else if (e.holding) { e.holding = false; e.pending = { p: 0.3 + 0.7 * e.charge, ttl: 6 }; e.charge = 0; }
-      } else { e.charge = 0; e.holding = false; e.pending = null; }
+        else if (e.holding) { e.holding = false; e.pending = { p: 0.3 + 0.7 * e.charge, ttl: 6, curve: e.curve }; e.charge = 0; }
+      } else { e.charge = 0; e.holding = false; e.pending = null; e.curve = 0; }
       if (e.kickCd > 0) e.kickCd--;
       e.x += e.vx; e.y += e.vy;
-      clampPlayer(e);
+      clampPlayer(e, this.cfg);
     }
 
     const b = this.ball;
+    if (b.spin) { // falso: hız vektörünü her karede biraz döndürür (yavaşlayınca etkisi azalır)
+      const th = b.spin * Math.min(1, Math.hypot(b.vx, b.vy) / 6), cs = Math.cos(th), sn = Math.sin(th);
+      const nvx = b.vx * cs - b.vy * sn, nvy = b.vx * sn + b.vy * cs;
+      b.vx = nvx; b.vy = nvy;
+      b.spin *= B.spinDamp;
+      if (Math.abs(b.spin) < 0.0004) b.spin = 0;
+    }
     b.x += b.vx; b.y += b.vy;
     b.vx *= B.damp; b.vy *= B.damp;
     if (Math.abs(b.vx) < 0.005) b.vx = 0;
     if (Math.abs(b.vy) < 0.005) b.vy = 0;
 
     for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) collide(ents[i].e, ents[j].e, P.rest);
-    for (const c of ents) if (collide(c.e, b, B.hitRest)) this.touch(c);
+    for (const c of ents) if (collide(c.e, b, B.hitRest)) { this.touch(c); b.spin *= 0.4; }
     for (const c of ents) {
       const e = c.e;
       if (e.pending) {
@@ -485,16 +528,16 @@ class Room {
         else if (--e.pending.ttl <= 0) e.pending = null;
       }
     }
-    clampBall(b);
-    for (const p of this.posts) collide(b, p, 0.8);
-    clampBall(b);
+    clampBall(b, this.cfg);
+    for (const p of this.posts) if (collide(b, p, 0.8)) b.spin *= 0.4;
+    clampBall(b, this.cfg);
     const sp = Math.hypot(b.vx, b.vy);
     if (sp > B.max) { b.vx *= B.max / sp; b.vy *= B.max / sp; }
-    for (const c of ents) clampPlayer(c.e);
+    for (const c of ents) clampPlayer(c.e, this.cfg);
   }
 
   goalCheck() {
-    const b = this.ball, { W, H, GW, BR } = CFG;
+    const b = this.ball, { W, H, GW, BR } = this.cfg;
     if (Math.abs(b.y - H / 2) < GW / 2) {
       if (b.x + BR < 0) this.onGoal(1);
       else if (b.x - BR > W) this.onGoal(0);
@@ -540,9 +583,9 @@ class Room {
     for (const c of this.clients.values()) {
       if (c.slot < 0) continue;
       const e = c.e;
-      p.push([c.id, r1(e.x), r1(e.y), Math.round(e.charge * 100), Math.round(e.stam * 100), e.sp]);
+      p.push([c.id, r1(e.x), r1(e.y), Math.round(e.charge * 100), Math.round(e.stam * 100), e.sp, e.curve]);
     }
-    return JSON.stringify({ t: 's', r: r1(Math.max(0, this.matchTime)), c: r1(Math.max(0, this.timer)), p, b: [r1(this.ball.x), r1(this.ball.y)] });
+    return JSON.stringify({ t: 's', r: r1(Math.max(0, this.matchTime)), c: r1(Math.max(0, this.timer)), p, b: [r1(this.ball.x), r1(this.ball.y), Math.round(this.ball.spin * 1000)] });
   }
 
   get active() { return this.clients.size > 0 && this.phase !== 'lobby'; }
@@ -588,7 +631,7 @@ class Room {
 }
 Room.nextId = 0;
 
-const rooms = Array.from({ length: ROOM_COUNT }, (_, i) => new Room(i));
+const rooms = MODES.map((m, i) => new Room(i, m));
 
 // ---------------------------------------------------------------- statik dosyalar
 const MIME = {
@@ -660,8 +703,8 @@ function start(port) {
         if (m.t !== 'join') return;
         const r = rooms[parseInt(m.room, 10)];
         if (!r) { ws.close(); return; }
-        if (r.clients.size >= MAX_PLAYERS) {
-          ws.send(JSON.stringify({ t: 'err', m: 'Sunucu dolu (' + MAX_PLAYERS + '/' + MAX_PLAYERS + ')' }));
+        if (r.clients.size >= r.maxPlayers) {
+          ws.send(JSON.stringify({ t: 'err', m: 'Sunucu dolu (' + r.maxPlayers + '/' + r.maxPlayers + ')' }));
           ws.close();
           return;
         }
@@ -697,10 +740,10 @@ function start(port) {
     }
   }, 25000);
 
-  server.listen(port, () => console.log('Mini Futbol 11v11 v' + VERSION + ' hazır: http://localhost:' + server.address().port));
+  server.listen(port, () => console.log('OnlineSoccer v' + VERSION + ' hazır: http://localhost:' + server.address().port));
   return { server, wss, stop() { clearInterval(loop); clearInterval(hb); wss.close(); server.close(); } };
 }
 
 if (require.main === module) start(PORT);
 
-module.exports = { VERSION, Room, rooms, start, CFG, FORMATIONS, slotPos, MATCH_SECONDS, DT };
+module.exports = { VERSION, Room, rooms, start, MODES, slotPos, MATCH_SECONDS, DT };

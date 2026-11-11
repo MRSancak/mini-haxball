@@ -15,7 +15,7 @@ inNum.value = profile.num; inName.value = profile.name;
 // ------------------------------------------------------------------ durum
 const scr = { menu: $('#menu'), servers: $('#servers'), lobby: $('#lobby'), game: $('#game') };
 let ws = null, joined = false, lobbyOpen = false, wasKicked = false, maxP = 30;
-let st = null, cfg = null, forms = null;
+let st = null, cfg = null, forms = null, gkSlot = 0, gkRing = 0.5;
 const me = { id: 0, team: -1, slot: -1 };
 const pinfo = new Map();      // id -> {color,num,name,team}
 let snapCur = null, snapPrev = null, curMap = new Map(), prevMap = new Map(), snapT = 0, snapInt = 33;
@@ -109,7 +109,8 @@ $('#btnCloseLobby').addEventListener('click', () => { lobbyOpen = false; updateV
 function onMsg(m) {
   switch (m.t) {
     case 'hi':
-      me.id = m.id; cfg = m.cfg; forms = m.forms; maxP = m.max || maxP; joined = true; lastStats = null; setPanel(false);
+      me.id = m.id; cfg = m.cfg; forms = m.forms; maxP = m.max || maxP; gkSlot = m.gk | 0; gkRing = m.gkRing == null ? 0.5 : m.gkRing;
+      lpitch.style.aspectRatio = cfg.W + ' / ' + cfg.H; joined = true; lastStats = null; setPanel(false);
       $('#lobbyTitle').textContent = m.room;
       for (const c of ctrl) c.fillForms();
       resize();
@@ -288,7 +289,7 @@ function onState(m) {
   me.team = mine ? mine.tm : -1;
   me.slot = mine ? mine.sl : -1;
   pinfo.clear();
-  for (const p of m.players) if (p.tm >= 0) pinfo.set(p.id, { color: m.teams[p.tm].c, num: p.u, name: p.n, team: p.tm });
+  for (const p of m.players) if (p.tm >= 0) pinfo.set(p.id, { color: m.teams[p.tm].c, num: p.u, name: p.n, team: p.tm, gk: p.sl === gkSlot });
 
   el.nameA.textContent = m.teams[0].n; el.nameB.textContent = m.teams[1].n;
   el.chipA.style.background = m.teams[0].c; el.chipB.style.background = m.teams[1].c;
@@ -524,39 +525,67 @@ function buildPitch() {
   }
 }
 
-function drawPlayer(x, y, info, isMe, charge) {
-  const R = cfg.R;
+function ringOf(info) {
+  return cfg.R + cfg.RING * (info.gk ? gkRing : 1);
+}
+
+// Çember: top çemberin içindeyse yeşil yanar (vuruş yapılabilir)
+function drawPlayer(x, y, info, isMe, charge, curve, ballIn) {
+  const R = cfg.R, RR = ringOf(info);
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   ctx.beginPath(); ctx.ellipse(x + 3, y + R * 0.75, R, R * 0.55, 0, 0, 6.2832); ctx.fill();
+
+  // vuruş çemberi
+  ctx.beginPath(); ctx.arc(x, y, RR, 0, 6.2832);
+  ctx.fillStyle = ballIn ? 'rgba(120,255,140,.16)' : 'rgba(255,255,255,.05)'; ctx.fill();
+  ctx.lineWidth = isMe ? 2.5 : 1.8;
+  ctx.strokeStyle = ballIn ? 'rgba(120,255,140,.95)' : (info.gk ? 'rgba(255,210,63,.75)' : 'rgba(255,255,255,' + (isMe ? '.7' : '.38') + ')');
+  if (info.gk) ctx.setLineDash([5, 4]);
+  ctx.stroke(); ctx.setLineDash([]);
+
   if (charge > 0) {
     ctx.strokeStyle = charge > 70 ? '#ff5252' : '#ffd23f'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y, R + 6, -Math.PI / 2, -Math.PI / 2 + charge / 100 * 6.2832); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, R + 5, -Math.PI / 2, -Math.PI / 2 + charge / 100 * 6.2832); ctx.stroke();
   }
   ctx.beginPath(); ctx.arc(x, y, R, 0, 6.2832);
   ctx.fillStyle = info.color; ctx.fill();
   ctx.lineWidth = 3; ctx.strokeStyle = isMe ? '#fff' : '#0b0b0b'; ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = textOn(info.color); ctx.font = '800 15px system-ui,sans-serif';
+  ctx.fillStyle = textOn(info.color); ctx.font = '800 ' + Math.round(R * 0.94) + 'px system-ui,sans-serif';
   ctx.fillText(info.num, x, y + 1);
   ctx.font = '600 11px system-ui,sans-serif';
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)';
-  ctx.strokeText(info.name, x, y - R - 9); ctx.fillStyle = '#fff'; ctx.fillText(info.name, x, y - R - 9);
+  const ny = y - RR - 8;
+  const label = info.gk ? info.name + ' (KL)' : info.name;
+  ctx.strokeText(label, x, ny); ctx.fillStyle = '#fff'; ctx.fillText(label, x, ny);
+  if (curve) { // seçili falso yönü
+    ctx.font = '800 13px system-ui,sans-serif';
+    const t = curve < 0 ? '\u21B6 Q' : 'E \u21B7', tx = x + (curve < 0 ? -1 : 1) * (RR + 14);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(t, tx, y);
+    ctx.fillStyle = '#7cf3ff'; ctx.fillText(t, tx, y);
+  }
   if (isMe) {
     ctx.fillStyle = '#ffd23f';
-    ctx.beginPath(); ctx.moveTo(x, y - R - 17); ctx.lineTo(x - 5, y - R - 25); ctx.lineTo(x + 5, y - R - 25); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x, ny - 8); ctx.lineTo(x - 5, ny - 16); ctx.lineTo(x + 5, ny - 16); ctx.closePath(); ctx.fill();
   }
 }
 
-function drawBall(x, y) {
+let ballAng = 0;
+function drawBall(x, y, spin) {
   const r = cfg.BR;
+  ballAng += (spin || 0) * 0.012;
   ctx.fillStyle = 'rgba(0,0,0,.3)';
   ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.8, r, r * 0.5, 0, 0, 6.2832); ctx.fill();
+  if (spin) { // falsolu topun etrafında renkli halka
+    ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.2832);
+    ctx.strokeStyle = spin < 0 ? 'rgba(124,243,255,.7)' : 'rgba(255,170,90,.7)'; ctx.lineWidth = 2; ctx.stroke();
+  }
   ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832);
   ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke();
   ctx.fillStyle = '#111';
   ctx.beginPath();
   for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + i * 1.2566;
+    const a = -Math.PI / 2 + ballAng + i * 1.2566;
     ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r * 0.42, y + Math.sin(a) * r * 0.42);
   }
   ctx.closePath(); ctx.fill();
@@ -572,23 +601,25 @@ function frame(now) {
   ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
   const a = clamp((now - snapT) / snapInt, 0, 1);
 
+  const b = snapCur.b, pb = snapPrev.b || b;
+  const bx = pb[0] + (b[0] - pb[0]) * a, by = pb[1] + (b[1] - pb[1]) * a;
   for (const arr of snapCur.p) {
     const info = pinfo.get(arr[0]);
     if (!info) continue;
     const pv = prevMap.get(arr[0]);
     const x = pv ? pv[1] + (arr[1] - pv[1]) * a : arr[1];
     const y = pv ? pv[2] + (arr[2] - pv[2]) * a : arr[2];
-    drawPlayer(x, y, info, arr[0] === me.id, arr[3]);
+    const ballIn = Math.hypot(bx - x, by - y) - cfg.BR <= ringOf(info);
+    drawPlayer(x, y, info, arr[0] === me.id, arr[3], arr[6] || 0, ballIn);
   }
-  const b = snapCur.b, pb = snapPrev.b || b;
-  drawBall(pb[0] + (b[0] - pb[0]) * a, pb[1] + (b[1] - pb[1]) * a);
+  drawBall(bx, by, b[2] || 0);
 }
 requestAnimationFrame(frame);
 
 // ------------------------------------------------------------------ giriş
 const keys = new Set();
 const joy = { x: 0, y: 0, id: -1 };
-let kickKey = false, sprintKey = false, touchKick = false, touchSprint = false, lastKey = '';
+let kickKey = false, sprintKey = false, touchKick = false, touchSprint = false, curveQ = false, curveE = false, touchQ = false, touchE = false, lastKey = '';
 const KMAP = { ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd', ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r' };
 
 function inGameView() { return joined && st && st.ph !== 'lobby' && scr.lobby.classList.contains('hidden') && !scr.game.classList.contains('hidden'); }
@@ -598,10 +629,11 @@ function pushInput() {
   let dy = (keys.has('d') ? 1 : 0) - (keys.has('u') ? 1 : 0);
   if (joy.id !== -1) { dx = joy.x; dy = joy.y; }
   const s = (sprintKey || touchSprint) ? 1 : 0, k = (kickKey || touchKick) ? 1 : 0;
-  const key = dx + ',' + dy + ',' + s + ',' + k;
+  const q = (curveQ || touchQ) ? 1 : 0, e = (curveE || touchE) ? 1 : 0;
+  const key = dx + ',' + dy + ',' + s + ',' + k + ',' + q + ',' + e;
   if (key === lastKey) return;
   lastKey = key;
-  send({ t: 'in', dx, dy, s, k });
+  send({ t: 'in', dx, dy, s, k, q, e });
 }
 
 window.addEventListener('keydown', (e) => {
@@ -613,6 +645,8 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Tab') setPanel(true);
   else if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'KeyK') kickKey = true;
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') sprintKey = true;
+  else if (e.code === 'KeyQ') curveQ = true;
+  else if (e.code === 'KeyE') curveE = true;
   else return;
   e.preventDefault();
   pushInput();
@@ -623,10 +657,12 @@ window.addEventListener('keyup', (e) => {
   else if (e.code === 'Tab') { setPanel(false); e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'KeyX' || e.code === 'KeyK') kickKey = false;
   else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') sprintKey = false;
+  else if (e.code === 'KeyQ') curveQ = false;
+  else if (e.code === 'KeyE') curveE = false;
   else return;
   pushInput();
 });
-window.addEventListener('blur', () => { keys.clear(); kickKey = sprintKey = false; pushInput(); });
+window.addEventListener('blur', () => { keys.clear(); kickKey = sprintKey = curveQ = curveE = false; pushInput(); });
 
 // dokunmatik
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -669,6 +705,8 @@ if (isTouch) {
   };
   bind('#tKick', () => { touchKick = true; }, () => { touchKick = false; });
   bind('#tSprint', () => { touchSprint = true; }, () => { touchSprint = false; });
+  bind('#tQ', () => { touchQ = true; }, () => { touchQ = false; });
+  bind('#tE', () => { touchE = true; }, () => { touchE = false; });
 }
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 

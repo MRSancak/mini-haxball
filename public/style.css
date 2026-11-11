@@ -151,6 +151,10 @@ input[type=color]{width:46px;height:38px;border:1px solid var(--line);border-rad
   font-weight:900;letter-spacing:.06em;touch-action:none}
 #tKick{right:max(22px,env(safe-area-inset-right));bottom:30px;width:94px;height:94px;background:rgba(255,210,63,.35);font-size:18px}
 #tSprint{right:calc(max(22px,env(safe-area-inset-right)) + 108px);bottom:20px;width:70px;height:70px;font-size:13px}
+#tQ,#tE{position:absolute;pointer-events:auto;border-radius:50%;border:2px solid rgba(124,243,255,.6);background:rgba(0,0,0,.35);color:#fff;font-weight:800;width:58px;height:58px;font-size:13px;touch-action:none}
+#tQ{right:calc(max(22px,env(safe-area-inset-right)) + 130px);bottom:104px}
+#tE{right:calc(max(22px,env(safe-area-inset-right)) + 40px);bottom:136px}
+#tQ.on,#tE.on{background:rgba(124,243,255,.55);color:#00232a}
 #tKick.on,#tSprint.on{background:rgba(255,210,63,.75);color:#241400}
 .rotate{display:none}
 @media (pointer:coarse) and (orientation:portrait){
@@ -220,3 +224,11 @@ input[type=color]{width:46px;height:38px;border:1px solid var(--line);border-rad
 .arow small{color:var(--mut);font-size:11px;white-space:nowrap}
 .akick{width:26px;height:26px;border-radius:50%;border:0;background:var(--danger);color:#fff;font-weight:900;cursor:pointer}
 .aempty{color:var(--mut);font-size:13px}
+
+/* ---------- yenilikler ---------- */
+.changelog{width:min(560px,100%);text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:4px}
+.changelog h3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+.changelog details{border-top:1px solid var(--line);padding:8px 0}
+.changelog summary{cursor:pointer;font-weight:800;color:var(--txt)}
+.changelog ul{margin:8px 0 2px 18px;color:var(--mut);font-size:13px;line-height:1.6}
+.changelog li b{color:var(--txt)}
