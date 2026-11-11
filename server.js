@@ -43,7 +43,7 @@ const FORMATIONS = {
 // v1.3: damp 0.92 -> 0.90 (durma sonrası kayma %25 azaldı); maksimum hız = accel*damp/(1-damp) olduğundan
 // accel/sprint yeniden hesaplandı: yürüme 2.88 -> 3.168 ve koşu 3.96 -> 4.356 (-%5).
 // stamDrain 0.0035 / 1.25 (stamina %25 daha uzun dayanır).
-const P = { accel: 0.2615, sprint: 0.3655, damp: 0.90, im: 0.5, rest: 0.3, stamDrain: 0.0028, stamRegen: 0.0017 };
+const P = { accel: 0.2815, sprint: 0.3855, damp: 0.90, im: 0.5, rest: 0.3, stamDrain: 0.0032, stamRegen: 0.0018 };
 const KICK_CHARGE_SECONDS = 0.640; // v1.3: %5 daha hızlı şut dolumu
 const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14 };
 
