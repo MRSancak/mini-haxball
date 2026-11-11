@@ -15,22 +15,34 @@
   <div class="brand">
     <div class="logo"></div>
     <h1>SOCCER<span>ONLINE</span></h1>
-    <p>8v8 online &bull; v1.2</p>
+    <p>8v8 online &bull; v1.3</p>
   </div>
   <form id="menuForm" class="card" autocomplete="off">
     <label><span>Forma numarası</span><input id="inNum" type="number" inputmode="numeric" min="1" max="99" value="10"></label>
     <label><span>Oyuncu adı</span><input id="inName" type="text" maxlength="14" placeholder="İsmin"></label>
     <button class="btn primary" type="submit">OYNA</button>
   </form>
-  <section class="news" aria-label="v1.2 yenilikleri">
-    <h3>v1.2 Yenilikleri</h3>
-    <ul>
-      <li><b>Taraftar:</b> Oynamayanlar tribüne oturur, takım tutar ve tribünden bir şeyler söyler</li>
-      <li><b>Kaleci eliyle tutar:</b> Kale sahası içinde topu al, 5 saniye içinde oyunu başlat</li>
-      <li><b>Sol tık ile şut:</b> Fareyle de topa vurabilirsin (sağ tık = kaleci topu tutar)</li>
-      <li><b>Sunucu kur:</b> Sabit sunucular kalktı; sunucu listesinden katıl ya da kendi sunucunu kur</li>
-      <li><b>Parola ve yönetim:</b> Parola koy/kaldır, istediğini sunucudan at, kapasite 16–64</li>
-    </ul>
+  <section class="news" aria-label="v1.3 yenilikleri">
+
+<!-- 2) Yenilik menüsü -->
+    <h3>1.3 Yenilikleri</h3>
+      <ul>
+          <li>E Q ile falso verme</li>
+          <li>Sprint sonrası durmadaki kayma %25 azaltıldı</li>
+          <li>Mevcut yürüme hızı %5 azaltıldı</li>
+          <li>stamina doluma hızı %5 azaltıldı</li>
+          <li>%5 daha hızlı şut dolumu</li>
+      </ul>
+    <details>
+      <summary>v1.2 Yenilikleri</summary>
+        <ul>
+          <li><b>Taraftar:</b> Oynamayanlar tribüne oturur, takım tutar ve tribünden bir şeyler söyler</li>
+          <li><b>Kaleci eliyle tutar:</b> Kale sahası içinde topu al, 5 saniye içinde oyunu başlat</li>
+          <li><b>Sol tık ile şut:</b> Fareyle de topa vurabilirsin (sağ tık = kaleci topu tutar)</li>
+          <li><b>Sunucu kur:</b> Sabit sunucular kalktı; sunucu listesinden katıl ya da kendi sunucunu kur</li>
+          <li><b>Parola ve yönetim:</b> Parola koy/kaldır, istediğini sunucudan at, kapasite 16–64</li>
+        </ul>
+    </details> 
     <details>
       <summary>v1.1 yenilikleri</summary>
       <ul>
@@ -42,7 +54,7 @@
   <p class="hint">Hareket: <b>WASD / Oklar</b> &bull; Şut: <b>Boşluk / X / Sol tık</b> (basılı tut = güç) &bull; Kaleci tut: <b>E / Sağ tık</b> &bull; Koşu: <b>Shift</b> &bull; İstatistik: <b>Tab</b> (basılı tut)</p>
 </main>
 
-<!-- 2) SUNUCU SEÇİMİ -->
+<!-- 3) SUNUCU SEÇİMİ -->
 <main id="servers" class="screen center hidden">
   <h2>Sunucu listesi</h2>
   <button id="btnCreate" class="btn primary" type="button">+ Sunucu kur</button>
@@ -50,7 +62,7 @@
   <button id="btnBack" class="btn ghost" type="button">&larr; Geri</button>
 </main>
 
-<!-- 2b) SUNUCU KUR -->
+<!-- 3b) SUNUCU KUR -->
 <main id="create" class="screen center hidden">
   <h2>Sunucu kur</h2>
   <form id="createForm" class="card" autocomplete="off">
@@ -72,7 +84,7 @@
   </form>
 </div>
 
-<!-- 3) MEVKİ SEÇME / LOBİ -->
+<!-- 4) MEVKİ SEÇME / LOBİ -->
 <main id="lobby" class="screen hidden">
   <header class="lobbyHead">
     <div>
@@ -106,7 +118,7 @@
   </section>
 </main>
 
-<!-- 4) OYUN -->
+<!-- 5) OYUN -->
 <div id="game" class="hidden">
   <canvas id="cv"></canvas>
 
