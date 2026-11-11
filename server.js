@@ -40,11 +40,11 @@ const FORMATIONS = {
   '3-1-3': [['KL', .05, .5], ['SLB', .2, .18], ['STP', .2, .5], ['SĞB', .2, .82], ['OS', .45, .5], ['SLK', .82, .16], ['FV', .9, .5], ['SĞK', .82, .84]],
 };
 
-// v1.1: damp 0.96 -> 0.92 (durma sonrası kayma %50 azaldı); maksimum hız = accel*damp/(1-damp) olduğundan
-// accel/sprint yeniden hesaplandı: yürüme 2.88 -> 3.168 ve koşu 3.96 -> 4.356 (+%10).
+// v1.3: damp 0.92 -> 0.90 (durma sonrası kayma %25 azaldı); maksimum hız = accel*damp/(1-damp) olduğundan
+// accel/sprint yeniden hesaplandı: yürüme 2.88 -> 3.168 ve koşu 3.96 -> 4.356 (-%5).
 // stamDrain 0.0035 / 1.25 (stamina %25 daha uzun dayanır).
-const P = { accel: 0.2755, sprint: 0.3788, damp: 0.92, im: 0.5, rest: 0.3, stamDrain: 0.0028, stamRegen: 0.0018 };
-const KICK_CHARGE_SECONDS = 0.675; // v1.1: 0.75 sn -> %10 daha hızlı şut dolumu
+const P = { accel: 0.2615, sprint: 0.3655, damp: 0.90, im: 0.5, rest: 0.3, stamDrain: 0.0028, stamRegen: 0.0017 };
+const KICK_CHARGE_SECONDS = 0.640; // v1.3: %5 daha hızlı şut dolumu
 const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14 };
 
 // ---------------------------------------------------------------- yardımcılar
@@ -657,9 +657,9 @@ class Room {
         this.simTime += DT;
         this.stepPlay(false);
         this.matchTime -= DT;
-        { // topla oynama: topa son dokunan takım (5 sn içinde)
+        { // topla oynama: topa son dokunan takım (7 sn içinde)
           const lt = this.touches[this.touches.length - 1];
-          if (lt && this.simTime - lt.t < 5) this.stats.pos[lt.team]++;
+          if (lt && this.simTime - lt.t < 7) this.stats.pos[lt.team]++;
         }
         this.goalCheck();
         if (this.phase === 'play' && this.matchTime <= 0) { this.matchTime = 0; this.endMatch(); }
@@ -815,7 +815,7 @@ function start(port) {
     }
   }, 25000);
 
-  server.listen(port, () => console.log('SoccerOnline v1.2 hazır: http://localhost:' + server.address().port));
+  server.listen(port, () => console.log('SoccerOnline v1.3 hazır: http://localhost:' + server.address().port));
   return { server, wss, stop() { clearInterval(loop); clearInterval(hb); wss.close(); server.close(); } };
 }
 
