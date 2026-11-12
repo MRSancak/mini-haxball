@@ -1,7 +1,7 @@
 {
-  "name": "onlinesoccer",
-  "version": "1.3.0",
-  "description": "OnlineSoccer — 11v11 ve 8v8 online futbol (Haxball x PES tarzı)",
+  "name": "socceronline",
+  "version": "1.2.0",
+  "description": "SoccerOnline — 8v8 online futbol (Haxball x PES tarzı)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
