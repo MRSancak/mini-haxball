@@ -9,10 +9,65 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const db = require('./db');
+const { Pool } = require('pg');
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUB = path.join(__dirname, 'public');
+const USERS_FILE = path.join(__dirname, 'users.local.json');
+
+const localUsers = new Map();
+let pool = null;
+
+async function initDb() {
+  if (process.env.DATABASE_URL) {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    await pool.query('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, pass TEXT NOT NULL)');
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(USERS_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Geçersiz kullanıcı verisi');
+    for (const [username, user] of Object.entries(data)) {
+      if (user && typeof user.pass === 'string') localUsers.set(username, { username, pass: user.pass });
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+  }
+}
+
+async function createUser(username, pass) {
+  if (pool) {
+    const result = await pool.query(
+      'INSERT INTO users (username, pass) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING RETURNING username',
+      [username, pass]
+    );
+    return result.rowCount > 0;
+  }
+
+  if (localUsers.has(username)) return false;
+  localUsers.set(username, { username, pass });
+  try {
+    const temp = USERS_FILE + '.tmp';
+    fs.writeFileSync(temp, JSON.stringify(Object.fromEntries(localUsers)), { mode: 0o600 });
+    fs.renameSync(temp, USERS_FILE);
+    return true;
+  } catch (e) {
+    localUsers.delete(username);
+    throw e;
+  }
+}
+
+async function getUser(username) {
+  if (pool) {
+    const result = await pool.query('SELECT username, pass FROM users WHERE username = $1', [username]);
+    return result.rows[0] || null;
+  }
+  return localUsers.get(username) || null;
+}
+
+const db = { init: initDb, createUser, getUser };
 
 // ---------------------------------------------------------------- ayarlar
 // v1.3: GW 190 -> 209 (kale genişliği +%10) • KRING: kaleci çemberi (çember payı 10 -> 5 px, %50 küçük) • HOLD_T: tutma süresi
@@ -178,7 +233,7 @@ function clampPlayer(e, cfg) {
   if (e.y < R) { e.y = R; if (e.vy < 0) e.vy = 0; } else if (e.y > H - R) { e.y = H - R; if (e.vy > 0) e.vy = 0; }
   const px = e.px === undefined ? e.x : e.px;
   if (e.x < R) {
-    if (Math.abs(e.y - cy) > lim && px >= R) { e.x = R; if (e.vx < 0) e.vx = 0; }   // ağız dışından girilmez
+    if (Math.abs(e.y - cy) > lim && px >= R) { e.x = R; if (e.vx < 0) e.vx = 0; }
     else {
       if (e.y < cy - lim) { e.y = cy - lim; if (e.vy < 0) e.vy = 0; } else if (e.y > cy + lim) { e.y = cy + lim; if (e.vy > 0) e.vy = 0; }
       if (e.x < -GD + R) { e.x = -GD + R; if (e.vx < 0) e.vx = 0; }
@@ -304,7 +359,7 @@ class Room {
   pushState() { this.broadcast(this.stateMsg()); }
   info() {
     const o = this.clients.get(this.ownerId);
-    return { id: this.id, name: this.name, count: this.clients.size, max: this.max, n: this.n, lock: !!this.passHash, own: o ? o.name : '', ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
+    return { id: this.id, name: this.name, count: this.clients.size, max: this.max, n: this.n, lock: !!this.passHash, own: o ? o.name : '', ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime || 0) };
   }
 
   // ---- oyuncular
@@ -331,8 +386,8 @@ class Room {
     if (this.clients.size === 0) {
       if (this.fixed) { this.resetAll(); return; }
       this.dead = true; rooms.delete(this.id); return;
-    }   // v1.2: boş sunucu kapanır
-    if (this.ownerId === c.id) this.ownerId = this.clients.keys().next().value;       // sahip çıkarsa sıradaki sahip olur
+    }
+    if (this.ownerId === c.id) this.ownerId = this.clients.keys().next().value;
     this.pushState();
   }
 
@@ -435,7 +490,7 @@ class Room {
     if (c.id !== this.ownerId) return;
     const t = this.clients.get(id);
     if (!t || t === c) return;
-    if (t.ip) this.banned.set(t.ip, Date.now() + 60000);   // 1 dk geri giremez
+    if (t.ip) this.banned.set(t.ip, Date.now() + 60000);
     this.send(t, JSON.stringify({ t: 'err', m: 'Sunucu sahibi seni attı' }));
     this.removeClient(t);
     try { t.ws.close(); } catch (e) { /* yoksay */ }
@@ -553,7 +608,7 @@ class Room {
     if (last && last.id === c.id) {
       last.t = this.simTime;
       const k = this.stats.kick;
-      if (k && k.id === c.id && this.simTime - k.t > 0.35) this.stats.kick = null; // topu kendisi geri aldı
+      if (k && k.id === c.id && this.simTime - k.t > 0.35) this.stats.kick = null;
       return;
     }
     this.resolveKick(c);
@@ -565,8 +620,8 @@ class Room {
     const e = c.e, b = this.ball;
     if (e.kickCd > 0) return false;
     const dx = b.x - e.x, dy = b.y - e.y, d = Math.hypot(dx, dy);
-    const ring = c.slot === 0 ? this.cfg.KRING : this.cfg.RING;   // kaleci çemberi daha küçük
-    if (d > ring + b.r) return false; // top çembere 1 px bile girse vurulabilir
+    const ring = c.slot === 0 ? this.cfg.KRING : this.cfg.RING;
+    if (d > ring + b.r) return false;
     const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
     const str = (3 + 8 * e.pending.p) * SHOT_BOOST;
     b.vx = b.vx * 0.3 + nx * str;
@@ -594,7 +649,7 @@ class Room {
   throwBall(c, p, auto) {
     const e = c.e, b = this.ball, str = (3 + 8 * p) * SHOT_BOOST;
     let fx = e.fx, fy = e.fy;
-    if (auto) { // süre dolunca top rakip kaleye doğru atılır
+    if (auto) {
       fx = c.team === 0 ? 1 : -1; fy = e.fy * 0.5;
       const l = Math.hypot(fx, fy); fx /= l; fy /= l;
     }
@@ -609,13 +664,13 @@ class Room {
     const e = c.e, b = this.ball;
     if (e.grabCd > 0) e.grabCd--;
     if (e.hold) {
-      if (frozen || !this.inBox(c.team, e.x, e.y)) { this.dropBall(c); return; }   // kale sahası dışında tutulamaz
+      if (frozen || !this.inBox(c.team, e.x, e.y)) { this.dropBall(c); return; }
       if (e.pending) { const p = e.pending.p; e.pending = null; this.throwBall(c, p, false); return; }
-      if (--e.holdT <= 0) this.throwBall(c, 0.55, true);                          // 5 sn doldu: oyunu başlat
+      if (--e.holdT <= 0) this.throwBall(c, 0.55, true);
       return;
     }
     if (frozen || !c.inp.g || e.grabCd > 0 || this.holder) return;
-    if (!this.inBox(c.team, e.x, e.y) || !this.inBox(c.team, b.x, b.y)) return;  // sadece kale sahası içinde
+    if (!this.inBox(c.team, e.x, e.y) || !this.inBox(c.team, b.x, b.y)) return;
     if (Math.hypot(b.x - e.x, b.y - e.y) > this.cfg.KRING + b.r) return;
     e.hold = true; e.holdT = HOLD_SECONDS * HZ; e.pending = null;
     this.holder = c;
@@ -676,7 +731,7 @@ class Room {
     for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) collide(ents[i].e, ents[j].e, P.rest);
     for (const c of ents) if (c.slot === 0) this.keeperStep(c, frozen);
 
-    if (this.holder) {   // top kalecinin elinde: fizik yok, kalecinin önünde taşınır
+    if (this.holder) {
       const e = this.holder.e, off = this.cfg.R + this.cfg.BR + 2;
       b.x = clampN(e.x + e.fx * off, this.cfg.BR + 2, this.cfg.W - this.cfg.BR - 2);
       b.y = clampN(e.y + e.fy * off, this.cfg.BR + 2, this.cfg.H - this.cfg.BR - 2);
@@ -727,7 +782,7 @@ class Room {
     }
     this.stats.kick = null;
     this.score[team]++;
-    const el =Math.round(MATCH_SECONDS - this.matchTime);
+    const el = Math.round(MATCH_SECONDS - this.matchTime);
     const g = {
       tm: team, min: Math.floor(el / 60) + ':' + String(el % 60).padStart(2, '0'),
       s: scorer ? scorer.name : null, sn: scorer ? scorer.num : 0,
@@ -764,7 +819,7 @@ class Room {
         this.simTime += DT;
         this.stepPlay(false);
         this.matchTime -= DT;
-        { // topla oynama: topa son dokunan takım (5 sn içinde)
+        {
           const lt = this.touches[this.touches.length - 1];
           if (lt && this.simTime - lt.t < 5) this.stats.pos[lt.team]++;
         }
@@ -874,7 +929,7 @@ function start(port) {
       try { m = JSON.parse(raw.toString()); } catch (e) { return; }
       if (!m || typeof m.t !== 'string') return;
       if (!client) {
-        const au = verifyToken(m.token);   // v1.3: giriş yapmış oyuncu adı hesabından gelir
+        const au = verifyToken(m.token);
         const pname = au || clean(m.t === 'create' ? m.pname : m.name, 14) || 'Oyuncu';
         const pnum = clampInt(m.num, 1, 99, 10);
         const fail = (msg) => { ws.send(JSON.stringify({ t: 'err', m: msg })); ws.close(); };
@@ -904,7 +959,6 @@ function start(port) {
     ws.on('error', () => {});
   });
 
-  // oyun döngüsü (sabit adım)
   let last = Date.now(), acc = 0;
   const loop = setInterval(() => {
     const now = Date.now();
@@ -917,7 +971,6 @@ function start(port) {
     }
   }, 8);
 
-  // bağlantı kontrolü (Render proxy'si boşta kalan soketleri kapatabilir)
   const hb = setInterval(() => {
     for (const ws of wss.clients) {
       if (ws.isAlive === false) { ws.terminate(); continue; }
