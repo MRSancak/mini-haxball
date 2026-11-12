@@ -6,3 +6,8 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /healthz
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false   # Render panelinden / Neon / Supabase bağlantı adresini elle gir

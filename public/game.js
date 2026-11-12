@@ -36,18 +36,68 @@ function toast(msg) {
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 function show(name) {
   for (const k in scr) scr[k].classList.toggle('hidden', k !== name);
+  $('#acct').classList.toggle('hidden', !['menu', 'servers', 'create'].includes(name));
   if (name === 'servers') loadServers();
 }
 
-// ------------------------------------------------------------------ menü
-$('#menuForm').addEventListener('submit', (e) => {
+// ------------------------------------------------------------------ hesap (v1.3)
+let acct = null, token = '';
+try { token = localStorage.getItem('so_token') || ''; } catch (e) { /* yoksay */ }
+let acctMode = 'login';
+function setAcct(a, tok) {
+  acct = a; token = a ? tok : '';
+  try { if (a) localStorage.setItem('so_token', tok); else localStorage.removeItem('so_token'); } catch (e) { /* yoksay */ }
+  $('#acctName').classList.toggle('hidden', !a);
+  $('#acctName').textContent = a ? '\u2713 ' + a.name : '';
+  $('#btnAcct').textContent = a ? 'Çıkış yap' : 'Giriş yap / Kayıt ol';
+  inName.disabled = !!a;
+  if (a) inName.value = a.name; else if (inName.value === '') inName.value = profile.name;
+}
+function setMode(m) {
+  acctMode = m;
+  $('#tabLogin').classList.toggle('on', m === 'login'); $('#tabReg').classList.toggle('on', m === 'reg');
+  $('#aSubmit').textContent = m === 'login' ? 'GİRİŞ' : 'HESAP OLUŞTUR';
+  $('#aPass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+  $('#aNote').classList.toggle('hidden', m === 'login');
+  $('#aErr').textContent = '';
+}
+$('#btnAcct').addEventListener('click', () => {
+  if (acct) { setAcct(null); toast('Çıkış yapıldı'); return; }
+  setMode('login'); $('#acctModal').classList.remove('hidden'); setTimeout(() => $('#aName').focus(), 30);
+});
+$('#tabLogin').addEventListener('click', () => setMode('login'));
+$('#tabReg').addEventListener('click', () => setMode('reg'));
+$('#aCancel').addEventListener('click', () => $('#acctModal').classList.add('hidden'));
+$('#acctForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  $('#aErr').textContent = '';
+  try {
+    const r = await fetch(acctMode === 'login' ? '/api/login' : '/api/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('#aName').value, pass: $('#aPass').value }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#aErr').textContent = j.error || 'Hata'; return; }
+    setAcct({ name: j.name }, j.token);
+    $('#aPass').value = ''; $('#acctModal').classList.add('hidden');
+    toast('Hoş geldin, ' + j.name);
+  } catch (err) { $('#aErr').textContent = 'Sunucuya ulaşılamadı'; }
+});
+if (token) {
+  fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } }).then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((j) => setAcct({ name: j.name }, token)).catch(() => setAcct(null));
+}
+
+// ------------------------------------------------------------------ menü
+function readProfile() {
   profile.num = clamp(parseInt(inNum.value, 10) || 10, 1, 99);
-  profile.name = (inName.value || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, 14) || 'Oyuncu';
+  profile.name = acct ? acct.name : (inName.value || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, 14) || 'Oyuncu';
   inNum.value = profile.num; inName.value = profile.name;
   try { localStorage.setItem('mf_profile', JSON.stringify(profile)); } catch (err) { /* yoksay */ }
-  show('servers');
-});
+}
+$('#menuForm').addEventListener('submit', (e) => { e.preventDefault(); readProfile(); show('servers'); });
+// v1.3: tek kalıcı 11v11 sunucusuna doğrudan giriş
+$('#btn11').addEventListener('click', () => { readProfile(); join(0, ''); });
 $('#btnBack').addEventListener('click', () => show('menu'));
 
 // ------------------------------------------------------------------ sunucu listesi
@@ -125,6 +175,7 @@ function connect(first) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const sock = new WebSocket(proto + '://' + location.host + '/ws');
   ws = sock;
+  if (acct && token) first.token = token;
   sock.onopen = () => sock.send(JSON.stringify(first));
   sock.onmessage = (ev) => {
     if (sock !== ws) return;
@@ -353,7 +404,7 @@ function updateView() {
   if (!joined || !st) return;
   const ph = st.ph;
   const showLobby = ph === 'lobby' || (lobbyOpen && ph !== 'end');
-  scr.menu.classList.add('hidden'); scr.servers.classList.add('hidden'); scr.create.classList.add('hidden');
+  scr.menu.classList.add('hidden'); scr.servers.classList.add('hidden'); scr.create.classList.add('hidden'); $('#acct').classList.add('hidden');
   $('#pwModal').classList.add('hidden');
   scr.lobby.classList.toggle('hidden', !showLobby);
   scr.game.classList.toggle('hidden', ph === 'lobby');
@@ -569,8 +620,8 @@ function buildPitch() {
   // ceza ve kale sahaları
   for (const side of [0, 1]) {
     const dir = side ? -1 : 1, x0 = side ? W : 0;
-    g.strokeRect(side ? W - 170 : 0, cy - 180, 170, 360);
-    g.strokeRect(side ? W - 70 : 0, cy - 100, 70, 200);
+    g.strokeRect(side ? W - cfg.BOX_W : 0, cy - cfg.BOX_H / 2, cfg.BOX_W, cfg.BOX_H);
+    g.strokeRect(side ? W - 70 : 0, cy - (GW / 2 + 20), 70, GW + 40);
     g.beginPath(); g.arc(x0 + dir * 120, cy, 4, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.arc(x0 + dir * 120, cy, 70, dir > 0 ? -0.93 : Math.PI - 0.93, dir > 0 ? 0.93 : Math.PI + 0.93); g.stroke();
   }
@@ -588,10 +639,11 @@ function drawPlayer(x, y, info, isMe, charge, hold) {
   // v1.1: şut çemberi — top bu çembere değerse vurulabilir
   ctx.save(); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
   ctx.strokeStyle = isMe ? 'rgba(255,255,255,.65)' : 'rgba(255,255,255,.3)';
-  ctx.beginPath(); ctx.arc(x, y, cfg.RING, 0, 6.2832); ctx.stroke(); ctx.restore();
+  const ring = info && info.sl === 0 ? cfg.KRING : cfg.RING;   // kaleci çemberi daha küçük
+  ctx.beginPath(); ctx.arc(x, y, ring, 0, 6.2832); ctx.stroke(); ctx.restore();
   if (hold > 0) {   // v1.2: kaleci topu tutuyor — 5 sn geri sayım
     ctx.strokeStyle = '#ff8a3d'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y, cfg.RING + 5, -Math.PI / 2, -Math.PI / 2 + hold / 50 * 6.2832); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, cfg.KRING + 5, -Math.PI / 2, -Math.PI / 2 + hold / (cfg.HOLD_T * 10) * 6.2832); ctx.stroke();
     ctx.fillStyle = '#ff8a3d'; ctx.font = '800 12px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText((hold / 10).toFixed(1), x, y + R + 17);
   }

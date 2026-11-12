@@ -257,3 +257,16 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #lobby{padding-bottom:190px}
 @media (max-width:760px){.feed{top:60px;max-width:46vw}}
 @media (max-height:520px){.fchants{display:none}.fanBar{padding:5px 8px}}
+
+/* ---------- v1.3 hesap ---------- */
+.acct{position:fixed;top:max(10px,env(safe-area-inset-top));right:12px;z-index:60;display:flex;align-items:center;gap:8px}
+.acctName{font-weight:800;font-size:13px;background:rgba(0,0,0,.45);border:1px solid var(--line);border-radius:99px;padding:6px 12px}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;padding:8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);font-weight:800;font-size:13px}
+.tabs button.on{background:var(--acc);color:#241400;border-color:var(--acc)}
+input[type=password]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--txt);font-size:17px;font-weight:600;outline:none}
+input[type=password]:focus{border-color:var(--acc)}
+.err{color:var(--danger);font-size:13px;min-height:1em;font-weight:700}
+#acctModal{z-index:90}
+
+.btn.big11{background:linear-gradient(180deg,#3aa0ff,#1565c0);color:#fff;border:0;margin-top:2px}

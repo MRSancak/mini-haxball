@@ -1,6 +1,6 @@
 'use strict';
 /**
- * SoccerOnline v1.2 — oyun sunucusu
+ * SoccerOnline v1.3 — oyun sunucusu
  * Tek bağımlılık: ws. Statik dosyalar (gzip'li) + WebSocket oyun odaları.
  */
 const http = require('http');
@@ -9,19 +9,22 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const db = require('./db');
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const PUB = path.join(__dirname, 'public');
 
 // ---------------------------------------------------------------- ayarlar
-const CFG = { W: 1300, H: 640, GW: 190, GD: 46, R: 16, BR: 10, POST: 6, RING: 26, BOX_W: 170, BOX_H: 360 };
+// v1.3: GW 190 -> 209 (kale genişliği +%10) • KRING: kaleci çemberi (çember payı 10 -> 5 px, %50 küçük) • HOLD_T: tutma süresi
+const CFG = { W: 1300, H: 640, GW: 209, GD: 46, R: 16, BR: 10, POST: 6, RING: 26, KRING: 21, BOX_W: 170, BOX_H: 360, HOLD_T: 3.5 };
+const CFG11 = Object.assign({}, CFG, { W: 1690, H: 832, BOX_W: 221, BOX_H: 468 });   // 11v11: %30 büyük saha
 // RING: şut çemberi yarıçapı (v1.1) • BOX_W/BOX_H: kalecinin topu eline alabildiği ceza sahası (v1.2)
 const DEFAULT_MAX = 16;      // v1.2: sunucu kapasitesi 16..64 (8v8 oyuncu + taraftar)
 const MIN_MAX = 16;
 const MAX_MAX = 64;
 const MAX_ROOMS = 40;
-const HOLD_SECONDS = 5;      // v1.2: kaleci topu en fazla 5 sn tutabilir
-const SLOTS = 8;
+const HOLD_SECONDS = 3.5;    // v1.3: kaleci topu en fazla 3.5 sn tutabilir (v1.2: 5)
+const SHOT_BOOST = 1.05;     // v1.3: şutlar %5 daha hızlı
 const MATCH_SECONDS = 300;
 const START_COUNTDOWN = 5;
 const GOAL_SECONDS = 5;
@@ -40,12 +43,90 @@ const FORMATIONS = {
   '3-1-3': [['KL', .05, .5], ['SLB', .2, .18], ['STP', .2, .5], ['SĞB', .2, .82], ['OS', .45, .5], ['SLK', .82, .16], ['FV', .9, .5], ['SĞK', .82, .84]],
 };
 
+const FORMATIONS11 = {
+  '4-4-2': [['KL', .05, .5], ['SLB', .2, .15], ['SLS', .2, .38], ['SĞS', .2, .62], ['SĞB', .2, .85], ['SLK', .5, .13], ['SLO', .5, .38], ['SĞO', .5, .62], ['SĞK', .5, .87], ['SLF', .88, .35], ['SĞF', .88, .65]],
+  '4-3-3': [['KL', .05, .5], ['SLB', .2, .15], ['SLS', .2, .38], ['SĞS', .2, .62], ['SĞB', .2, .85], ['SLO', .5, .2], ['OS', .5, .5], ['SĞO', .5, .8], ['SLK', .86, .14], ['FV', .9, .5], ['SĞK', .86, .86]],
+  '3-5-2': [['KL', .05, .5], ['SLS', .2, .25], ['STP', .2, .5], ['SĞS', .2, .75], ['SLK', .5, .1], ['SLO', .5, .3], ['OS', .5, .5], ['SĞO', .5, .7], ['SĞK', .5, .9], ['SLF', .88, .35], ['SĞF', .88, .65]],
+  '4-2-3-1': [['KL', .05, .5], ['SLB', .2, .15], ['SLS', .2, .38], ['SĞS', .2, .62], ['SĞB', .2, .85], ['SLO', .4, .35], ['SĞO', .4, .65], ['SLK', .62, .15], ['OOS', .62, .5], ['SĞK', .62, .85], ['FV', .9, .5]],
+  '5-3-2': [['KL', .05, .5], ['SLB', .2, .1], ['SLS', .2, .3], ['STP', .2, .5], ['SĞS', .2, .7], ['SĞB', .2, .9], ['SLO', .5, .25], ['OS', .5, .5], ['SĞO', .5, .75], ['SLF', .88, .35], ['SĞF', .88, .65]],
+};
+
 // v1.1: damp 0.96 -> 0.92 (durma sonrası kayma %50 azaldı); maksimum hız = accel*damp/(1-damp) olduğundan
 // accel/sprint yeniden hesaplandı: yürüme 2.88 -> 3.168 ve koşu 3.96 -> 4.356 (+%10).
 // stamDrain 0.0035 / 1.25 (stamina %25 daha uzun dayanır).
 const P = { accel: 0.2755, sprint: 0.3788, damp: 0.92, im: 0.5, rest: 0.3, stamDrain: 0.0028, stamRegen: 0.0018 };
 const KICK_CHARGE_SECONDS = 0.675; // v1.1: 0.75 sn -> %10 daha hızlı şut dolumu
 const B = { damp: 0.989, im: 1, wallRest: 0.65, hitRest: 0.4, max: 14 };
+
+// ---------------------------------------------------------------- hesaplar (v1.3)
+const SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) console.warn('UYARI: SESSION_SECRET yok — her yeniden başlatmada herkesin oturumu kapanır.');
+const TOKEN_DAYS = 30;
+const b64 = (b) => Buffer.from(b).toString('base64url');
+const sign = (p) => crypto.createHmac('sha256', SECRET).update(p).digest('base64url');
+function makeToken(username) { const p = b64(JSON.stringify({ u: username, e: Date.now() + TOKEN_DAYS * 864e5 })); return p + '.' + sign(p); }
+function verifyToken(t) {
+  if (typeof t !== 'string') return null;
+  const i = t.indexOf('.');
+  if (i < 1) return null;
+  const p = t.slice(0, i), sig = t.slice(i + 1), want = sign(p);
+  if (sig.length !== want.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return null;
+  try { const o = JSON.parse(Buffer.from(p, 'base64url').toString()); return o.e > Date.now() && typeof o.u === 'string' ? o.u : null; } catch (e) { return null; }
+}
+function hashPw(pw) {
+  const salt = crypto.randomBytes(16);
+  return salt.toString('hex') + ':' + crypto.scryptSync(pw, salt, 64).toString('hex');
+}
+function checkPw(pw, stored) {
+  const [s, h] = String(stored).split(':');
+  if (!s || !h) return false;
+  const a = crypto.scryptSync(pw, Buffer.from(s, 'hex'), 64), b = Buffer.from(h, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+const USER_RE = /^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ]{3,14}$/;
+const authLog = new Map(); // ip -> [zamanlar]
+function authLimited(ip) {
+  const now = Date.now(), a = (authLog.get(ip) || []).filter((t) => now - t < 60000);
+  a.push(now); authLog.set(ip, a);
+  if (authLog.size > 5000) authLog.clear();
+  return a.length > 10;
+}
+function readJson(req, cb) {
+  let b = '';
+  req.on('data', (c) => { b += c; if (b.length > 2048) req.destroy(); });
+  req.on('end', () => { try { cb(JSON.parse(b)); } catch (e) { cb(null); } });
+}
+function reply(res, code, obj) {
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(obj));
+}
+function clientIp(req) { return String((req.headers['x-forwarded-for'] || '').split(',')[0] || (req.socket && req.socket.remoteAddress) || '').trim(); }
+function handleAuth(req, res, url) {
+  if (url === '/api/me') {
+    const u = verifyToken((req.headers.authorization || '').replace(/^Bearer /, ''));
+    return u ? reply(res, 200, { name: u }) : reply(res, 401, { error: 'Oturum yok' });
+  }
+  if (req.method !== 'POST') return reply(res, 405, { error: 'Yöntem desteklenmiyor' });
+  if (authLimited(clientIp(req))) return reply(res, 429, { error: 'Çok fazla deneme, biraz bekle' });
+  readJson(req, async (m) => {
+    try {
+      if (!m || typeof m.name !== 'string' || typeof m.pass !== 'string') return reply(res, 400, { error: 'Eksik bilgi' });
+      const name = m.name.trim(), pass = m.pass;
+      if (url === '/api/register') {
+        if (!USER_RE.test(name)) return reply(res, 400, { error: 'Kullanıcı adı 3-14 karakter; harf, rakam veya _ olmalı' });
+        if (pass.length < 6 || pass.length > 64) return reply(res, 400, { error: 'Parola 6-64 karakter olmalı' });
+        const ok = await db.createUser(name, hashPw(pass));
+        return ok ? reply(res, 200, { name, token: makeToken(name) }) : reply(res, 409, { error: 'Bu kullanıcı adı alınmış' });
+      }
+      if (url === '/api/login') {
+        const u = USER_RE.test(name) ? await db.getUser(name) : null;
+        if (!u || !checkPw(pass, u.pass)) return reply(res, 401, { error: 'Kullanıcı adı veya parola yanlış' });
+        return reply(res, 200, { name: u.username, token: makeToken(u.username) });
+      }
+      return reply(res, 404, { error: 'Bulunamadı' });
+    } catch (e) { console.error('auth hatası', e.message); return reply(res, 500, { error: 'Sunucu hatası' }); }
+  });
+}
 
 // ---------------------------------------------------------------- yardımcılar
 const r1 = (v) => Math.round(v * 10) / 10;
@@ -58,15 +139,15 @@ const clampInt = (v, a, b, d) => {
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-function slotPos(formation, slot, team) {
-  const f = (FORMATIONS[formation] || FORMATIONS['3-3-1'])[slot];
-  const px = 30 + f[1] * (CFG.W / 2 - 80);
-  const py = f[2] * CFG.H;
-  return team === 0 ? { x: px, y: py } : { x: CFG.W - px, y: CFG.H - py };
+function slotPos(forms, formation, slot, team, cfg) {
+  const f = (forms[formation] || Object.values(forms)[0])[slot];
+  const px = 30 + f[1] * (cfg.W / 2 - 80);
+  const py = f[2] * cfg.H;
+  return team === 0 ? { x: px, y: py } : { x: cfg.W - px, y: cfg.H - py };
 }
 
-function mkTeam(name, color) {
-  return { name, color, formation: '3-3-1', captain: null, ready: false, slots: new Array(SLOTS).fill(null) };
+function mkTeam(name, color, formation, n) {
+  return { name, color, formation, captain: null, ready: false, slots: new Array(n).fill(null) };
 }
 
 // ---------------------------------------------------------------- fizik
@@ -90,14 +171,29 @@ function collide(a, b, rest) {
   return true;
 }
 
-function clampPlayer(e) {
-  const { W, H, R } = CFG;
-  if (e.x < R) { e.x = R; if (e.vx < 0) e.vx = 0; } else if (e.x > W - R) { e.x = W - R; if (e.vx > 0) e.vx = 0; }
+// v1.3: oyuncular kalenin içine girebilir (ağ içinde direklerin arasında hareket eder)
+function clampPlayer(e, cfg) {
+  const { W, H, R, GW, GD, POST } = cfg;
+  const cy = H / 2, lim = GW / 2 - R - POST;
   if (e.y < R) { e.y = R; if (e.vy < 0) e.vy = 0; } else if (e.y > H - R) { e.y = H - R; if (e.vy > 0) e.vy = 0; }
+  const px = e.px === undefined ? e.x : e.px;
+  if (e.x < R) {
+    if (Math.abs(e.y - cy) > lim && px >= R) { e.x = R; if (e.vx < 0) e.vx = 0; }   // ağız dışından girilmez
+    else {
+      if (e.y < cy - lim) { e.y = cy - lim; if (e.vy < 0) e.vy = 0; } else if (e.y > cy + lim) { e.y = cy + lim; if (e.vy > 0) e.vy = 0; }
+      if (e.x < -GD + R) { e.x = -GD + R; if (e.vx < 0) e.vx = 0; }
+    }
+  } else if (e.x > W - R) {
+    if (Math.abs(e.y - cy) > lim && px <= W - R) { e.x = W - R; if (e.vx > 0) e.vx = 0; }
+    else {
+      if (e.y < cy - lim) { e.y = cy - lim; if (e.vy < 0) e.vy = 0; } else if (e.y > cy + lim) { e.y = cy + lim; if (e.vy > 0) e.vy = 0; }
+      if (e.x > W + GD - R) { e.x = W + GD - R; if (e.vx > 0) e.vx = 0; }
+    }
+  }
 }
 
-function constrainLeft(b) {
-  const { GW, GD, BR, H } = CFG;
+function constrainLeft(b, cfg) {
+  const { GW, GD, BR, H } = cfg;
   const cy = H / 2, hg = GW / 2;
   if (b.x < BR) {
     if (Math.abs(b.y - cy) < hg) {
@@ -113,15 +209,15 @@ function constrainLeft(b) {
   }
 }
 
-function clampBall(b) {
-  const { W, H, BR } = CFG;
+function clampBall(b, cfg) {
+  const { W, H, BR } = cfg;
   if (b.x >= 0 && b.x <= W) {
     if (b.y < BR) { b.y = BR; if (b.vy < 0) b.vy = -b.vy * B.wallRest; }
     else if (b.y > H - BR) { b.y = H - BR; if (b.vy > 0) b.vy = -b.vy * B.wallRest; }
   }
-  constrainLeft(b);
+  constrainLeft(b, cfg);
   b.x = W - b.x; b.vx = -b.vx;
-  constrainLeft(b);
+  constrainLeft(b, cfg);
   b.x = W - b.x; b.vx = -b.vx;
 }
 
@@ -139,19 +235,24 @@ class Room {
     this.banned = new Map();
     this.holder = null;
     this.dead = false;
+    this.n = opts.mode === 11 ? 11 : 8;                         // takım başına oyuncu (v1.3: 11v11)
+    this.cfg = this.n === 11 ? CFG11 : CFG;
+    this.forms = this.n === 11 ? FORMATIONS11 : FORMATIONS;
+    this.defForm = this.n === 11 ? '4-4-2' : '3-3-1';
+    this.fixed = !!opts.fixed;                                  // kalıcı sunucu: sahibi yok, boşalınca kapanmaz
     this.clients = new Map();
     this.frame = 0;
     this.posts = [];
-    const cy = CFG.H / 2, hg = CFG.GW / 2;
-    for (const x of [0, CFG.W]) for (const y of [cy - hg, cy + hg]) {
-      this.posts.push({ x, y, vx: 0, vy: 0, r: CFG.POST, im: 0 });
+    const cy = this.cfg.H / 2, hg = this.cfg.GW / 2;
+    for (const x of [0, this.cfg.W]) for (const y of [cy - hg, cy + hg]) {
+      this.posts.push({ x, y, vx: 0, vy: 0, r: this.cfg.POST, im: 0 });
     }
-    this.ball = { x: CFG.W / 2, y: CFG.H / 2, vx: 0, vy: 0, r: CFG.BR, im: B.im };
+    this.ball = { x: this.cfg.W / 2, y: this.cfg.H / 2, vx: 0, vy: 0, r: this.cfg.BR, im: B.im };
     this.resetAll();
   }
 
   resetAll() {
-    this.teams = [mkTeam('Takım A', '#e53935'), mkTeam('Takım B', '#1e88e5')];
+    this.teams = [mkTeam('Takım A', '#e53935', this.defForm, this.n), mkTeam('Takım B', '#1e88e5', this.defForm, this.n)];
     for (const c of this.clients.values()) { c.team = -1; c.slot = -1; }
     this.toLobby(true);
   }
@@ -166,7 +267,7 @@ class Room {
     this.simTime = 0;
     this.timer = 0;
     for (const t of this.teams) t.ready = false;
-    this.ball.x = CFG.W / 2; this.ball.y = CFG.H / 2; this.ball.vx = 0; this.ball.vy = 0;
+    this.ball.x = this.cfg.W / 2; this.ball.y = this.cfg.H / 2; this.ball.vx = 0; this.ball.vy = 0;
     if (!silent) this.pushState();
   }
 
@@ -197,26 +298,26 @@ class Room {
   stateMsg() {
     const teams = this.teams.map((t) => ({ n: t.name, c: t.color, f: t.formation, cap: t.captain, rd: t.ready, sl: t.slots }));
     const players = [];
-    for (const c of this.clients.values()) players.push({ id: c.id, n: c.name, u: c.num, tm: c.team, sl: c.slot, ft: c.fan });
+    for (const c of this.clients.values()) players.push({ id: c.id, n: c.name, u: c.num, tm: c.team, sl: c.slot, ft: c.fan, v: c.acct ? 1 : 0 });
     return JSON.stringify({ t: 'state', ph: this.phase, sc: this.score, teams, players, goals: this.goals, own: this.ownerId, lock: !!this.passHash, max: this.max });
   }
   pushState() { this.broadcast(this.stateMsg()); }
   info() {
     const o = this.clients.get(this.ownerId);
-    return { id: this.id, name: this.name, count: this.clients.size, max: this.max, lock: !!this.passHash, own: o ? o.name : '', ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
+    return { id: this.id, name: this.name, count: this.clients.size, max: this.max, n: this.n, lock: !!this.passHash, own: o ? o.name : '', ph: this.phase, sc: this.score, left: Math.ceil(this.matchTime) };
   }
 
   // ---- oyuncular
-  addClient(ws, name, number, ip) {
+  addClient(ws, name, number, ip, acct) {
     const c = {
-      id: ++Room.nextId, ws, name, num: number, team: -1, slot: -1, takenAt: 0, ip: ip || '', fan: -1, lastSay: 0,
+      id: ++Room.nextId, ws, name, num: number, team: -1, slot: -1, takenAt: 0, ip: ip || '', acct: !!acct, fan: -1, lastSay: 0,
       inp: { dx: 0, dy: 0, s: false, k: false, g: false },
-      e: { x: 0, y: 0, vx: 0, vy: 0, r: CFG.R, im: P.im, charge: 0, holding: false, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0,
-        fx: 1, fy: 0, hold: false, holdT: 0, grabCd: 0 },
+      e: { x: 0, y: 0, vx: 0, vy: 0, r: this.cfg.R, im: P.im, charge: 0, holding: false, pending: null, kickCd: 0, stam: 1, tired: false, sp: 0,
+        fx: 1, fy: 0, hold: false, holdT: 0, grabCd: 0, px: 0 },
     };
     this.clients.set(c.id, c);
-    if (this.ownerId == null) this.ownerId = c.id;
-    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: CFG, forms: FORMATIONS, max: this.max }));
+    if (this.ownerId == null && !this.fixed) this.ownerId = c.id;
+    this.send(c, JSON.stringify({ t: 'hi', id: c.id, room: this.name, cfg: this.cfg, forms: this.forms, max: this.max }));
     this.pushState();
     this.send(c, this.statsMsg());
     return c;
@@ -227,7 +328,10 @@ class Room {
     this.freeSlot(c);
     this.clients.delete(c.id);
     if (this.holder === c) this.holder = null;
-    if (this.clients.size === 0) { this.dead = true; rooms.delete(this.id); return; }   // v1.2: boş sunucu kapanır
+    if (this.clients.size === 0) {
+      if (this.fixed) { this.resetAll(); return; }
+      this.dead = true; rooms.delete(this.id); return;
+    }   // v1.2: boş sunucu kapanır
     if (this.ownerId === c.id) this.ownerId = this.clients.keys().next().value;       // sahip çıkarsa sıradaki sahip olur
     this.pushState();
   }
@@ -254,7 +358,7 @@ class Room {
   take(c, team, slot) {
     if (this.phase === 'end') return;
     if (team !== 0 && team !== 1) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= SLOTS) return;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.n) return;
     const t = this.teams[team];
     if (t.slots[slot] != null) return;
     if (c.team === team && c.slot === slot) return;
@@ -285,7 +389,7 @@ class Room {
     if (typeof m.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(m.color) && m.color.toLowerCase() !== t.color) {
       t.color = m.color.toLowerCase(); changed = true;
     }
-    if (typeof m.formation === 'string' && FORMATIONS[m.formation] && this.phase === 'lobby' && t.formation !== m.formation) {
+    if (typeof m.formation === 'string' && this.forms[m.formation] && this.phase === 'lobby' && t.formation !== m.formation) {
       t.formation = m.formation; changed = true;
       for (const id of t.slots) { const cl = id != null ? this.clients.get(id) : null; if (cl) this.placeEnt(cl); }
     }
@@ -358,9 +462,9 @@ class Room {
   // ---- maç akışı
   placeEnt(c) {
     if (c.team < 0) return;
-    const p = slotPos(this.teams[c.team].formation, c.slot, c.team);
+    const p = slotPos(this.forms, this.teams[c.team].formation, c.slot, c.team, this.cfg);
     const e = c.e;
-    e.x = p.x; e.y = p.y; e.vx = 0; e.vy = 0;
+    e.x = p.x; e.y = p.y; e.px = p.x; e.vx = 0; e.vy = 0;
     e.charge = 0; e.holding = false; e.pending = null; e.kickCd = 0; e.stam = 1; e.tired = false; e.sp = 0;
     e.hold = false; e.holdT = 0; e.grabCd = 0; e.fx = c.team === 0 ? 1 : -1; e.fy = 0;
     if (this.holder === c) this.holder = null;
@@ -369,7 +473,7 @@ class Room {
   resetPositions() {
     for (const c of this.clients.values()) this.placeEnt(c);
     const b = this.ball;
-    b.x = CFG.W / 2; b.y = CFG.H / 2; b.vx = 0; b.vy = 0;
+    b.x = this.cfg.W / 2; b.y = this.cfg.H / 2; b.vx = 0; b.vy = 0;
     this.touches = [];
     this.stats.kick = null;
   }
@@ -428,7 +532,7 @@ class Room {
 
   // Vuruşun yönüne bakarak şut mu pas mı olduğuna karar verir
   registerKick(c) {
-    const b = this.ball, { W, H, GW } = CFG, cy = H / 2;
+    const b = this.ball, { W, H, GW } = this.cfg, cy = H / 2;
     const gx = c.team === 0 ? W : 0, dir = c.team === 0 ? 1 : -1;
     const vx = b.vx * dir, dx = Math.abs(gx - b.x);
     let shot = false, on = false;
@@ -461,9 +565,10 @@ class Room {
     const e = c.e, b = this.ball;
     if (e.kickCd > 0) return false;
     const dx = b.x - e.x, dy = b.y - e.y, d = Math.hypot(dx, dy);
-    if (d > CFG.RING + b.r) return false; // top çembere 1 px bile girse vurulabilir
+    const ring = c.slot === 0 ? this.cfg.KRING : this.cfg.RING;   // kaleci çemberi daha küçük
+    if (d > ring + b.r) return false; // top çembere 1 px bile girse vurulabilir
     const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
-    const str = 3 + 8 * e.pending.p;
+    const str = (3 + 8 * e.pending.p) * SHOT_BOOST;
     b.vx = b.vx * 0.3 + nx * str;
     b.vy = b.vy * 0.3 + ny * str;
     e.kickCd = 10;
@@ -474,7 +579,7 @@ class Room {
 
   // ---- kaleci (v1.2)
   inBox(team, x, y) {
-    const { W, H, BOX_W, BOX_H } = CFG;
+    const { W, H, BOX_W, BOX_H } = this.cfg;
     if (Math.abs(y - H / 2) > BOX_H / 2) return false;
     return team === 0 ? x <= BOX_W : x >= W - BOX_W;
   }
@@ -487,7 +592,7 @@ class Room {
   }
 
   throwBall(c, p, auto) {
-    const e = c.e, b = this.ball, str = 3 + 8 * p;
+    const e = c.e, b = this.ball, str = (3 + 8 * p) * SHOT_BOOST;
     let fx = e.fx, fy = e.fy;
     if (auto) { // süre dolunca top rakip kaleye doğru atılır
       fx = c.team === 0 ? 1 : -1; fy = e.fy * 0.5;
@@ -511,7 +616,7 @@ class Room {
     }
     if (frozen || !c.inp.g || e.grabCd > 0 || this.holder) return;
     if (!this.inBox(c.team, e.x, e.y) || !this.inBox(c.team, b.x, b.y)) return;  // sadece kale sahası içinde
-    if (Math.hypot(b.x - e.x, b.y - e.y) > CFG.RING + b.r) return;
+    if (Math.hypot(b.x - e.x, b.y - e.y) > this.cfg.KRING + b.r) return;
     e.hold = true; e.holdT = HOLD_SECONDS * HZ; e.pending = null;
     this.holder = c;
     b.vx = 0; b.vy = 0;
@@ -554,8 +659,10 @@ class Room {
         else if (e.holding) { e.holding = false; e.pending = { p: 0.3 + 0.7 * e.charge, ttl: 6 }; e.charge = 0; }
       } else { e.charge = 0; e.holding = false; e.pending = null; }
       if (e.kickCd > 0) e.kickCd--;
+      e.px = e.x;
       e.x += e.vx; e.y += e.vy;
-      clampPlayer(e);
+      clampPlayer(e, this.cfg);
+      for (const p of this.posts) collide(p, e, 0.3);
     }
 
     const b = this.ball;
@@ -570,9 +677,9 @@ class Room {
     for (const c of ents) if (c.slot === 0) this.keeperStep(c, frozen);
 
     if (this.holder) {   // top kalecinin elinde: fizik yok, kalecinin önünde taşınır
-      const e = this.holder.e, off = CFG.R + CFG.BR + 2;
-      b.x = clampN(e.x + e.fx * off, CFG.BR + 2, CFG.W - CFG.BR - 2);
-      b.y = clampN(e.y + e.fy * off, CFG.BR + 2, CFG.H - CFG.BR - 2);
+      const e = this.holder.e, off = this.cfg.R + this.cfg.BR + 2;
+      b.x = clampN(e.x + e.fx * off, this.cfg.BR + 2, this.cfg.W - this.cfg.BR - 2);
+      b.y = clampN(e.y + e.fy * off, this.cfg.BR + 2, this.cfg.H - this.cfg.BR - 2);
       b.vx = 0; b.vy = 0;
     } else {
       for (const c of ents) if (collide(c.e, b, B.hitRest)) this.touch(c);
@@ -583,17 +690,17 @@ class Room {
           else if (--e.pending.ttl <= 0) e.pending = null;
         }
       }
-      clampBall(b);
+      clampBall(b, this.cfg);
       for (const p of this.posts) collide(b, p, 0.8);
-      clampBall(b);
+      clampBall(b, this.cfg);
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > B.max) { b.vx *= B.max / sp; b.vy *= B.max / sp; }
     }
-    for (const c of ents) clampPlayer(c.e);
+    for (const c of ents) clampPlayer(c.e, this.cfg);
   }
 
   goalCheck() {
-    const b = this.ball, { W, H, GW, BR } = CFG;
+    const b = this.ball, { W, H, GW, BR } = this.cfg;
     if (Math.abs(b.y - H / 2) < GW / 2) {
       if (b.x + BR < 0) this.onGoal(1);
       else if (b.x - BR > W) this.onGoal(0);
@@ -690,6 +797,8 @@ Room.nextId = 0;
 // v1.2: sabit sunucular kaldırıldı — sunucuları oyuncular kurar
 const rooms = new Map();
 let roomSeq = 0;
+const BIG_ID = 0;   // v1.3: tek kalıcı 11v11 sunucusu (listede görünmez, menüdeki butonla girilir)
+rooms.set(BIG_ID, new Room(BIG_ID, { name: '11v11 Maç', max: 64, mode: 11, fixed: true }));
 function createRoom(opts) {
   const r = new Room(++roomSeq, opts);
   rooms.set(r.id, r);
@@ -722,10 +831,11 @@ function loadStatic() {
 function handleHttp(req, res) {
   const url = (req.url || '/').split('?')[0];
   if (url === '/api/servers') {
-    const body = JSON.stringify([...rooms.values()].map((r) => r.info()));
+    const body = JSON.stringify([...rooms.values()].filter((r) => !r.fixed).map((r) => r.info()));
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return res.end(body);
   }
+  if (url === '/api/me' || url === '/api/register' || url === '/api/login') return handleAuth(req, res, url);
   if (url === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('ok'); }
   const f = files.get(url);
   if (!f || (req.method !== 'GET' && req.method !== 'HEAD')) {
@@ -764,7 +874,8 @@ function start(port) {
       try { m = JSON.parse(raw.toString()); } catch (e) { return; }
       if (!m || typeof m.t !== 'string') return;
       if (!client) {
-        const pname = clean(m.t === 'create' ? m.pname : m.name, 14) || 'Oyuncu';
+        const au = verifyToken(m.token);   // v1.3: giriş yapmış oyuncu adı hesabından gelir
+        const pname = au || clean(m.t === 'create' ? m.pname : m.name, 14) || 'Oyuncu';
         const pnum = clampInt(m.num, 1, 99, 10);
         const fail = (msg) => { ws.send(JSON.stringify({ t: 'err', m: msg })); ws.close(); };
         if (m.t === 'join') {
@@ -774,7 +885,7 @@ function start(port) {
           if (r.isBanned(ip)) return fail('Bu sunucudan atıldın, biraz bekle');
           if (!r.checkPass(m.pass)) return fail('Parola yanlış');
           room = r;
-          client = r.addClient(ws, pname, pnum, ip);
+          client = r.addClient(ws, pname, pnum, ip, !!au);
         } else if (m.t === 'create') {
           if (rooms.size >= MAX_ROOMS) return fail('Sunucu sınırına ulaşıldı, daha sonra dene');
           let mine = 0;
@@ -783,7 +894,7 @@ function start(port) {
           const sname = clean(m.name, 24);
           if (!sname) return fail('Sunucu ismi gerekli');
           room = createRoom({ name: sname, max: m.max, pass: m.pass, ip });
-          client = room.addClient(ws, pname, pnum, ip);
+          client = room.addClient(ws, pname, pnum, ip, !!au);
         }
         return;
       }
@@ -815,10 +926,10 @@ function start(port) {
     }
   }, 25000);
 
-  server.listen(port, () => console.log('SoccerOnline v1.2 hazır: http://localhost:' + server.address().port));
+  server.listen(port, () => console.log('SoccerOnline v1.3 hazır: http://localhost:' + server.address().port));
   return { server, wss, stop() { clearInterval(loop); clearInterval(hb); wss.close(); server.close(); } };
 }
 
-if (require.main === module) start(PORT);
+if (require.main === module) db.init().then(() => start(PORT)).catch((e) => { console.error('Veritabanı başlatılamadı:', e.message); process.exit(1); });
 
-module.exports = { Room, rooms, createRoom, start, CFG, FORMATIONS, slotPos, MATCH_SECONDS, DT };
+module.exports = { Room, rooms, createRoom, start, CFG, CFG11, FORMATIONS, FORMATIONS11, slotPos, MATCH_SECONDS, DT };

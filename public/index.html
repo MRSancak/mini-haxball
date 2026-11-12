@@ -10,20 +10,43 @@
 </head>
 <body>
 
+<!-- hesap (sağ üst) -->
+<div id="acct" class="acct"><span id="acctName" class="acctName hidden"></span><button id="btnAcct" class="btn ghost small" type="button">Giriş yap / Kayıt ol</button></div>
+<div id="acctModal" class="modal hidden">
+  <form id="acctForm" class="card" autocomplete="on">
+    <div class="tabs"><button type="button" id="tabLogin" class="on">Giriş yap</button><button type="button" id="tabReg">Kayıt ol</button></div>
+    <label><span>Kullanıcı adı</span><input id="aName" type="text" maxlength="14" autocomplete="username" required></label>
+    <label><span>Parola</span><input id="aPass" type="password" maxlength="64" autocomplete="current-password" required></label>
+    <p class="note" id="aNote">Kullanıcı adı 3-14 karakter (harf, rakam, _). Parola en az 6 karakter.</p>
+    <p class="err" id="aErr"></p>
+    <div class="row2"><button class="btn ghost" id="aCancel" type="button">Kapat</button><button class="btn primary" id="aSubmit" type="submit">GİRİŞ</button></div>
+  </form>
+</div>
+
 <!-- 1) BAŞLANGIÇ MENÜSÜ -->
 <main id="menu" class="screen center">
   <div class="brand">
     <div class="logo"></div>
     <h1>SOCCER<span>ONLINE</span></h1>
-    <p>8v8 online &bull; Haxball &times; PES &bull; v1.2</p>
+    <p>8v8 &amp; 11v11 online &bull; Haxball &times; PES &bull; v1.3</p>
   </div>
   <form id="menuForm" class="card" autocomplete="off">
     <label><span>Forma numarası</span><input id="inNum" type="number" inputmode="numeric" min="1" max="99" value="10"></label>
     <label><span>Oyuncu adı</span><input id="inName" type="text" maxlength="14" placeholder="İsmin"></label>
     <button class="btn primary" type="submit">OYNA</button>
+    <button id="btn11" class="btn big11" type="button">11v11 MAÇ</button>
   </form>
-  <section class="news" aria-label="v1.2 yenilikleri">
-    <h3>v1.2 Yenilikleri</h3>
+  <section class="news" aria-label="v1.3 yenilikleri">
+    <h3>v1.3 Yenilikleri</h3>
+    <ul>
+      <li><b>11v11 maç:</b> Menüdeki düğmeyle tek kalıcı 11v11 sunucusuna gir (daha büyük saha, 5 yeni diziliş)</li>
+      <li><b>Kalede değişiklikler:</b> Kaleler %10 genişledi ve içine girilebiliyor</li>
+      <li><b>Kaleci:</b> Çemberi %50 küçüldü, topu en fazla 3.5 sn tutabiliyor</li>
+      <li><b>Şutlar %5 daha hızlı</b></li>
+      <li><b>Hesap:</b> Sağ üstten kayıt ol / giriş yap; hesapla oynayınca adın sana ait kalır</li>
+    </ul>
+    <details open>
+      <summary>v1.2 yenilikleri</summary>
     <ul>
       <li><b>Taraftar:</b> Oynamayanlar tribüne oturur, takım tutar ve tribünden bir şeyler söyler</li>
       <li><b>Kaleci eliyle tutar:</b> Kale sahası içinde topu al, 5 saniye içinde oyunu başlat</li>
@@ -31,6 +54,7 @@
       <li><b>Sunucu kur:</b> Sabit sunucular kalktı; sunucu listesinden katıl ya da kendi sunucunu kur</li>
       <li><b>Parola ve yönetim:</b> Parola koy/kaldır, istediğini sunucudan at, kapasite 16–64</li>
     </ul>
+    </details>
     <details>
       <summary>v1.1 yenilikleri</summary>
       <ul>
